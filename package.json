@@ -1,0 +1,16 @@
+{
+  "name": "expense-tracker",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --parallel -r run dev",
+    "dev:server": "pnpm --filter server dev",
+    "dev:app": "pnpm --filter app dev",
+    "build": "pnpm --filter shared build && pnpm --parallel -r run build",
+    "db:generate": "pnpm --filter server db:generate",
+    "db:migrate": "pnpm --filter server db:migrate",
+    "db:push": "pnpm --filter server db:push",
+    "test": "pnpm --filter server test",
+    "lint": "pnpm --parallel -r run lint",
+    "typecheck": "pnpm --parallel -r run typecheck"
+  }
+}
