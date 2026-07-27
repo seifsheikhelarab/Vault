@@ -37,11 +37,13 @@
 ## 5. States and ranges
 
 **Realistic data ranges**:
+
 - Dashboard: 0-50 expenses in the recent list, 3-8 categories, 1-12 months of spending data
 - Expense list: 0-500 expenses with pagination
 - Budgets: 0-8 active budgets with progress 0-150%
 
 **Material states**:
+
 - Empty state (new user, no expenses yet) — designed with intent, not blank
 - Loading state (charts fetching, data loading) — skeleton screens or shimmer
 - Error state (API failure) — graceful degradation
@@ -52,7 +54,8 @@
 
 **Layout topology**: Top nav with app name (Vault), nav links (Dashboard, Expenses, Groups, Company, Settings), and user avatar. Content area below.
 
-**Dashboard layout**: 
+**Dashboard layout**:
+
 - Top row: 3-4 summary cards (total spent this month, remaining budget, active groups, pending claims)
 - Middle row: Two charts side by side (category breakdown donut + spending over time line)
 - Bottom row: Recent expenses table (TanStack Table) + quick-add button
@@ -66,6 +69,7 @@
 ## 7. Constraints and open decisions
 
 **Binding constraints**:
+
 - TanStack Router file-based routing — routes must follow the naming convention
 - TanStack Query for all data fetching — no raw fetch/axios
 - TanStack Table for expense list — sortable, filterable, paginated
@@ -74,6 +78,7 @@
 - Warm/friendly palette — Monzo/Revolut family, not cold corporate
 
 **Open decisions** (deferred to new-work):
+
 - Exact color palette (warm base, accent color, semantic colors)
 - Typography choices (font family, scale, weights)
 - Component language (border radius, shadow, spacing rhythm)

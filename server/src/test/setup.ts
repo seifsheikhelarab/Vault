@@ -1,20 +1,20 @@
-import { beforeAll, afterAll } from "vitest";
-import { app } from "../index";
-import { auth } from "../lib/auth";
+import { beforeAll, afterAll } from 'vitest';
+import { app } from '../index';
+import { auth } from '../lib/auth';
 
 export { app };
 
 // ── Test data shared across test suites ──────────────────────────────
 
 export interface TestUser {
-  id: string;
-  email: string;
-  name: string;
+    id: string;
+    email: string;
+    name: string;
 }
 
 export interface TestCategory {
-  id: string;
-  name: string;
+    id: string;
+    name: string;
 }
 
 let testUser: TestUser | null = null;
@@ -28,8 +28,9 @@ let authContext: any = null;
  * Throws if called before setup completes.
  */
 export function getTestUser(): TestUser {
-  if (!testUser) throw new Error("Test user not initialized — did beforeAll run?");
-  return testUser;
+    if (!testUser)
+        throw new Error('Test user not initialized — did beforeAll run?');
+    return testUser;
 }
 
 /**
@@ -37,8 +38,9 @@ export function getTestUser(): TestUser {
  * Used for permission testing (e.g. non-member, non-admin scenarios).
  */
 export function getSecondUser(): TestUser {
-  if (!secondUser) throw new Error("Second user not initialized — did beforeAll run?");
-  return secondUser;
+    if (!secondUser)
+        throw new Error('Second user not initialized — did beforeAll run?');
+    return secondUser;
 }
 
 /**
@@ -46,8 +48,9 @@ export function getSecondUser(): TestUser {
  * Throws if called before setup completes.
  */
 export function getTestCategory(): TestCategory {
-  if (!testCategory) throw new Error("Test category not initialized — did beforeAll run?");
-  return testCategory;
+    if (!testCategory)
+        throw new Error('Test category not initialized — did beforeAll run?');
+    return testCategory;
 }
 
 /**
@@ -55,9 +58,9 @@ export function getTestCategory(): TestCategory {
  * Uses the x-test-user-id header which the auth middleware respects in test mode.
  */
 export function getAuthHeaders(userId: string): Headers {
-  const headers = new Headers({ "Content-Type": "application/json" });
-  headers.set("x-test-user-id", userId);
-  return headers;
+    const headers = new Headers({ 'Content-Type': 'application/json' });
+    headers.set('x-test-user-id', userId);
+    return headers;
 }
 
 /**
@@ -65,23 +68,23 @@ export function getAuthHeaders(userId: string): Headers {
  * Useful when tests need more users than the two created in setup.
  */
 export async function createTestUser(email?: string): Promise<TestUser> {
-  const ctx = await auth!.$context;
-  const testUtils = ctx.test;
-  const userObj = testUtils.createUser({
-    email: email || `dynamic-${crypto.randomUUID()}@example.com`,
-    name: "Dynamic Test User",
-  });
-  const saved = await testUtils.saveUser(userObj);
-  return { id: saved.id, email: saved.email, name: saved.name };
+    const ctx = await auth!.$context;
+    const testUtils = ctx.test;
+    const userObj = testUtils.createUser({
+        email: email || `dynamic-${crypto.randomUUID()}@example.com`,
+        name: 'Dynamic Test User'
+    });
+    const saved = await testUtils.saveUser(userObj);
+    return { id: saved.id, email: saved.email, name: saved.name };
 }
 
 /**
  * Deletes a test user by ID.
  */
 export async function deleteTestUser(userId: string): Promise<void> {
-  if (authContext) {
-    await authContext.test.deleteUser(userId);
-  }
+    if (authContext) {
+        await authContext.test.deleteUser(userId);
+    }
 }
 
 /**
@@ -92,45 +95,53 @@ export async function deleteTestUser(userId: string): Promise<void> {
  * Uses unique UUID-based emails to avoid conflicts from interrupted runs.
  */
 beforeAll(async () => {
-  // Get the auth context which includes testUtils helpers
-  authContext = await auth.$context;
-  const test = authContext.test;
+    // Get the auth context which includes testUtils helpers
+    authContext = await auth.$context;
+    const test = authContext.test;
 
-  // ── Create primary test user ──────────────────────────────────────
-  const userObj = test.createUser({
-    email: `primary-${crypto.randomUUID()}@example.com`,
-    name: "Primary Test User",
-  });
-  const savedUser = await test.saveUser(userObj);
-  testUser = { id: savedUser.id, email: savedUser.email, name: savedUser.name };
+    // ── Create primary test user ──────────────────────────────────────
+    const userObj = test.createUser({
+        email: `primary-${crypto.randomUUID()}@example.com`,
+        name: 'Primary Test User'
+    });
+    const savedUser = await test.saveUser(userObj);
+    testUser = {
+        id: savedUser.id,
+        email: savedUser.email,
+        name: savedUser.name
+    };
 
-  // ── Create second test user (for permission tests) ────────────────
-  const userObj2 = test.createUser({
-    email: `second-${crypto.randomUUID()}@example.com`,
-    name: "Second Test User",
-  });
-  const savedUser2 = await test.saveUser(userObj2);
-  secondUser = { id: savedUser2.id, email: savedUser2.email, name: savedUser2.name };
+    // ── Create second test user (for permission tests) ────────────────
+    const userObj2 = test.createUser({
+        email: `second-${crypto.randomUUID()}@example.com`,
+        name: 'Second Test User'
+    });
+    const savedUser2 = await test.saveUser(userObj2);
+    secondUser = {
+        id: savedUser2.id,
+        email: savedUser2.email,
+        name: savedUser2.name
+    };
 
-  // ── Create a test category ────────────────────────────────────────
-  const { db } = await import("../lib/db");
-  const { categories } = await import("../lib/db/schema");
-  const catId = crypto.randomUUID();
-  await db.insert(categories).values({
-    id: catId,
-    name: "Test Category",
-    userId: testUser.id,
-  });
-  testCategory = { id: catId, name: "Test Category" };
+    // ── Create a test category ────────────────────────────────────────
+    const { db } = await import('../lib/db');
+    const { categories } = await import('../lib/db/schema');
+    const catId = crypto.randomUUID();
+    await db.insert(categories).values({
+        id: catId,
+        name: 'Test Category',
+        userId: testUser.id
+    });
+    testCategory = { id: catId, name: 'Test Category' };
 });
 
 /**
  * Cleans up test data after all tests complete.
  */
 afterAll(async () => {
-  if (authContext) {
-    // Delete both users (cascade removes their categories, groups, memberships, etc.)
-    if (testUser) await authContext.test.deleteUser(testUser.id);
-    if (secondUser) await authContext.test.deleteUser(secondUser.id);
-  }
+    if (authContext) {
+        // Delete both users (cascade removes their categories, groups, memberships, etc.)
+        if (testUser) await authContext.test.deleteUser(testUser.id);
+        if (secondUser) await authContext.test.deleteUser(secondUser.id);
+    }
 });

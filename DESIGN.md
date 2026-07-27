@@ -51,7 +51,7 @@
 ## Typography
 
 ### Font Family
-- **Primary**: DM Sans — warm, friendly, geometric sans-serif
+- **Primary**: Figtree — warm, friendly, geometric sans-serif with distinctive character
 - **Monospace**: JetBrains Mono — for amounts, code, data values
 
 ### Scale (rem)

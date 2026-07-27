@@ -11,6 +11,7 @@
     "db:push": "pnpm --filter server db:push",
     "test": "pnpm --filter server test",
     "lint": "pnpm --parallel -r run lint",
+    "format": "pnpm --parallel -r run format",
     "typecheck": "pnpm --parallel -r run typecheck"
   }
 }
