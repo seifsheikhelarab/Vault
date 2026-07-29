@@ -4,6 +4,7 @@ import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { csrf } from 'hono/csrf';
 import { serve } from '@hono/node-server';
+import { serveStatic } from '@hono/node-server/serve-static';
 
 import { auth } from './lib/auth';
 import { authMiddleware } from './lib/middleware';
@@ -15,6 +16,7 @@ import settlementRouter from './resources/settlements/settlement.router';
 import categoryRouter from './resources/categories/category.router';
 import budgetRouter from './resources/budgets/budget.router';
 import claimRouter from './resources/claims/claim.router';
+import uploadRouter from './resources/uploads/upload.router';
 
 const app = new Hono();
 
@@ -48,8 +50,12 @@ api.route('/settlements', settlementRouter);
 api.route('/categories', categoryRouter);
 api.route('/budgets', budgetRouter);
 api.route('/claims', claimRouter);
+api.route('/uploads', uploadRouter);
 
 app.route('/api', api);
+
+// Serve locally uploaded receipt images
+app.use('/uploads/*', serveStatic({ root: './' }));
 
 export type AppType = typeof app;
 export { app };

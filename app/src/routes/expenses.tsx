@@ -1,12 +1,26 @@
 import {
     createFileRoute,
-    Link,
     redirect,
     useNavigate
 } from '@tanstack/react-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useExpenses, useCategories, useDeleteExpense } from '../lib/hooks';
-import { authClient } from '../lib/auth-client';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+    createColumnHelper,
+    flexRender,
+    getCoreRowModel,
+    getPaginationRowModel,
+    getSortedRowModel,
+    useReactTable
+} from '@tanstack/react-table';
+import type { SortingState, Column } from '@tanstack/react-table';
+import {
+    useExpenses,
+    useCategories,
+    useDeleteExpense,
+    useGroups,
+    useMembers
+} from '../lib/hooks';
+import { authClient, useSession } from '../lib/auth-client';
 import { Button, IconButton } from '../components/shared';
 import { AddExpenseDialog } from '../components/add-expense-dialog';
 import type { Expense } from '@expense/shared';
@@ -14,12 +28,14 @@ import type { Expense } from '@expense/shared';
 type ExpenseSearch = {
     q: string;
     cat: string;
-    sort: 'date' | 'amount';
+    sort: 'date' | 'amount' | 'description' | 'categoryName';
     dir: 'asc' | 'desc';
     dateFrom: string;
     dateTo: string;
     amountMin: string;
     amountMax: string;
+    groupId: string;
+    memberId: string;
 };
 
 export const DEFAULT_EXPENSE_SEARCH = {
@@ -30,7 +46,9 @@ export const DEFAULT_EXPENSE_SEARCH = {
     dateFrom: '',
     dateTo: '',
     amountMin: '',
-    amountMax: ''
+    amountMax: '',
+    groupId: '',
+    memberId: ''
 };
 
 const expenseSearchValidator = {
@@ -43,8 +61,13 @@ const expenseSearchValidator = {
         sort:
             input.sort === 'amount'
                 ? ('amount' as const)
-                : DEFAULT_EXPENSE_SEARCH.sort,
-        dir: input.dir === 'asc' ? ('asc' as const) : DEFAULT_EXPENSE_SEARCH.dir,
+                : input.sort === 'description'
+                  ? ('description' as const)
+                  : input.sort === 'categoryName'
+                    ? ('categoryName' as const)
+                    : DEFAULT_EXPENSE_SEARCH.sort,
+        dir:
+            input.dir === 'asc' ? ('asc' as const) : DEFAULT_EXPENSE_SEARCH.dir,
         dateFrom:
             typeof input.dateFrom === 'string'
                 ? input.dateFrom
@@ -60,7 +83,15 @@ const expenseSearchValidator = {
         amountMax:
             typeof input.amountMax === 'string'
                 ? input.amountMax
-                : DEFAULT_EXPENSE_SEARCH.amountMax
+                : DEFAULT_EXPENSE_SEARCH.amountMax,
+        groupId:
+            typeof input.groupId === 'string'
+                ? input.groupId
+                : DEFAULT_EXPENSE_SEARCH.groupId,
+        memberId:
+            typeof input.memberId === 'string'
+                ? input.memberId
+                : DEFAULT_EXPENSE_SEARCH.memberId
     })
 };
 
@@ -73,14 +104,32 @@ export const Route = createFileRoute('/expenses')({
     component: ExpensesList
 });
 
-function ExpensesList() {
-    const { q, cat, sort, dir, dateFrom, dateTo, amountMin, amountMax } =
-        Route.useSearch();
+type ExpenseRow = Expense & { categoryName: string };
+
+const PAGE_SIZE = 10;
+
+export function ExpensesList() {
+    const {
+        q,
+        cat,
+        sort,
+        dir,
+        dateFrom,
+        dateTo,
+        amountMin,
+        amountMax,
+        groupId,
+        memberId
+    } = Route.useSearch();
     const navigate = useNavigate({ from: Route.id });
     const [revealed, setRevealed] = useState(false);
     const [showAddDialog, setShowAddDialog] = useState(false);
     const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
     const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+    const sorting = useMemo<SortingState>(
+        () => [{ id: sort, desc: dir === 'desc' }],
+        [sort, dir]
+    );
 
     const deleteExpense = useDeleteExpense();
 
@@ -101,14 +150,29 @@ function ExpensesList() {
         requestAnimationFrame(() => setRevealed(true));
     }, []);
 
-    const { data: expenseData, isLoading } = useExpenses({ pageSize: 100 });
+
+
+    const { data: session } = useSession();
+    const currentUserId = session?.user?.id;
+    const { data: expenseData, isLoading } = useExpenses({
+        pageSize: 100,
+        ...(groupId ? { groupId } : {})
+    });
     const { data: categories = [] } = useCategories();
+    const { data: groups = [] } = useGroups();
+    const { data: members = [] } = useMembers(groupId);
 
     const allExpenses = expenseData?.items ?? [];
 
     // Build category name map
-    const catMap = new Map(categories.map((c) => [c.id, c.name]));
-    const categoryNames = ['All', ...categories.map((c) => c.name)] as const;
+    const catMap = useMemo(
+        () => new Map(categories.map((c) => [c.id, c.name])),
+        [categories]
+    );
+    const categoryNames = useMemo(
+        () => ['All', ...categories.map((c) => c.name)],
+        [categories]
+    );
 
     const movePill = useCallback(() => {
         const idx = categoryNames.indexOf(
@@ -125,70 +189,184 @@ function ExpensesList() {
         movePill();
     }, [movePill]);
 
-    const filtered = allExpenses
-        .map((e) => ({
-            ...e,
-            categoryName: catMap.get(e.categoryId) ?? 'Other'
-        }))
-        .filter((e) => cat === 'All' || e.categoryName === cat)
-        .filter((e) =>
-            e.description.toLowerCase().includes(q.toLowerCase())
-        )
-        .filter((e) => {
-            if (!dateFrom && !dateTo) return true;
-            const ed = new Date(e.date).getTime();
-            if (dateFrom && ed < new Date(dateFrom).getTime()) return false;
-            if (dateTo) {
-                const end = new Date(dateTo);
-                end.setDate(end.getDate() + 1);
-                if (ed >= end.getTime()) return false;
-            }
-            return true;
-        })
-        .filter((e) => {
-            const amt = Number(e.amount);
-            if (amountMin && amt < parseFloat(amountMin)) return false;
-            if (amountMax && amt > parseFloat(amountMax)) return false;
-            return true;
-        })
-        .sort((a, b) => {
-            const mul = dir === 'asc' ? 1 : -1;
-            if (sort === 'date')
-                return (
-                    mul *
-                    (new Date(a.date).getTime() - new Date(b.date).getTime())
-                );
-            return mul * (Number(a.amount) - Number(b.amount));
-        });
+    const filtered = useMemo(() => {
+        return allExpenses
+            .map((e) => ({
+                ...e,
+                categoryName: catMap.get(e.categoryId) ?? 'Other'
+            }))
+            .filter((e) => cat === 'All' || e.categoryName === cat)
+            .filter((e) =>
+                e.description.toLowerCase().includes(q.toLowerCase())
+            )
+            .filter((e) => {
+                if (!dateFrom && !dateTo) return true;
+                const ed = new Date(e.date).getTime();
+                if (dateFrom && ed < new Date(dateFrom).getTime()) return false;
+                if (dateTo) {
+                    const end = new Date(dateTo);
+                    end.setDate(end.getDate() + 1);
+                    if (ed >= end.getTime()) return false;
+                }
+                return true;
+            })
+            .filter((e) => {
+                const amt = Number(e.amount);
+                if (amountMin && amt < parseFloat(amountMin)) return false;
+                if (amountMax && amt > parseFloat(amountMax)) return false;
+                return true;
+            })
+            .filter((e) => {
+                if (!memberId) return true;
+                return e.userId === memberId;
+            });
+    }, [
+        allExpenses,
+        cat,
+        q,
+        dateFrom,
+        dateTo,
+        amountMin,
+        amountMax,
+        catMap,
+        memberId
+    ]);
 
-    const toggleSort = (field: 'date' | 'amount') => {
-        if (sort === field) {
-            setFilter({ dir: dir === 'asc' ? 'desc' : 'asc' });
-        } else {
-            setFilter({ sort: field, dir: 'desc' });
-        }
-    };
+    const columnHelper = useMemo(() => createColumnHelper<ExpenseRow>(), []);
 
-    const SortIcon = ({ field }: { field: 'date' | 'amount' }) => (
-        <svg
-            className={`inline-block ml-1 transition-transform duration-150 ${sort === field ? 'opacity-100' : 'opacity-0'}`}
-            width="12"
-            height="12"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            style={{
-                transform:
-                    sort === field && dir === 'asc'
-                        ? 'rotate(180deg)'
-                        : undefined
-            }}
-        >
-            <polyline points="6 9 12 15 18 9" />
-        </svg>
+    const columns = useMemo(
+        () => [
+            columnHelper.accessor('description', {
+                header: 'Description',
+                cell: ({ row }) => (
+                    <div className="flex items-center gap-2">
+                        <span>{row.original.description}</span>
+                        {row.original.receiptUrl && (
+                            <a
+                                href={row.original.receiptUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="text-text-tertiary hover:text-coral transition-colors shrink-0"
+                                title="View receipt"
+                            >
+                                <svg
+                                    width="14"
+                                    height="14"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                >
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                    <polyline points="14 2 14 8 20 8" />
+                                    <line x1="16" y1="13" x2="8" y2="13" />
+                                    <line x1="16" y1="17" x2="8" y2="17" />
+                                </svg>
+                            </a>
+                        )}
+                    </div>
+                )
+            }),
+            columnHelper.accessor('categoryName', {
+                header: 'Category',
+                cell: ({ getValue }) => (
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-coral-light/60 text-coral">
+                        {getValue()}
+                    </span>
+                )
+            }),
+            columnHelper.accessor('date', {
+                header: 'Date',
+                sortingFn: 'datetime',
+                cell: ({ getValue }) =>
+                    new Date(getValue()).toLocaleDateString()
+            }),
+            columnHelper.accessor('amount', {
+                header: () => (
+                    <span className="w-full text-right block">Amount</span>
+                ),
+                sortingFn: 'basic',
+                cell: ({ getValue }) => (
+                    <span className="font-mono font-semibold text-text-primary">
+                        ${Number(getValue()).toFixed(2)}
+                    </span>
+                )
+            }),
+            columnHelper.display({
+                id: 'actions',
+                header: '',
+                cell: ({ row }) => (
+                    <div className="flex items-center justify-end gap-1">
+                        <IconButton
+                            onClick={() => setEditingExpense(row.original)}
+                            ariaLabel="Edit expense"
+                            className="opacity-0 group-hover:opacity-100"
+                        >
+                            <svg
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            >
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                            </svg>
+                        </IconButton>
+                        <IconButton
+                            onClick={() => setDeleteConfirm(row.original.id)}
+                            ariaLabel="Delete expense"
+                            className="opacity-0 group-hover:opacity-100"
+                        >
+                            <svg
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                            >
+                                <polyline points="3 6 5 6 21 6" />
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                            </svg>
+                        </IconButton>
+                    </div>
+                )
+            })
+        ],
+        [columnHelper]
     );
+
+    const table = useReactTable({
+        data: filtered,
+        columns,
+        state: { sorting },
+        onSortingChange: (updater) => {
+            const next =
+                typeof updater === 'function' ? updater(sorting) : updater;
+            const first = next[0];
+            if (first) {
+                setFilter({
+                    sort: first.id,
+                    dir: first.desc ? 'desc' : 'asc'
+                });
+            }
+        },
+        getCoreRowModel: getCoreRowModel(),
+        getSortedRowModel: getSortedRowModel(),
+        getPaginationRowModel: getPaginationRowModel(),
+        initialState: { pagination: { pageSize: PAGE_SIZE, pageIndex: 0 } },
+        autoResetPageIndex: true
+    });
+
+    const { rows } = table.getRowModel();
 
     if (isLoading) {
         return (
@@ -285,8 +463,55 @@ function ExpensesList() {
                     />
                 </div>
 
-                {/* Date and Amount Filters */}
+                {/* Group, Person, Date and Amount Filters */}
                 <div className="flex flex-wrap gap-3 mb-4">
+                    <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-medium text-text-tertiary">
+                            Group
+                        </span>
+                        <select
+                            value={groupId}
+                            onChange={(e) =>
+                                setFilter({
+                                    groupId: e.target.value,
+                                    memberId: ''
+                                })
+                            }
+                            className="px-2.5 py-1.5 bg-surface border border-border rounded-[8px] text-xs text-text-primary focus:outline-none focus:ring-2 focus:ring-coral/20 focus:border-coral transition-colors duration-150 min-w-[120px]"
+                        >
+                            <option value="">All groups</option>
+                            {groups.map((g) => (
+                                <option key={g.id} value={g.id}>
+                                    {g.name}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {groupId && (
+                        <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-medium text-text-tertiary">
+                                Person
+                            </span>
+                            <select
+                                value={memberId}
+                                onChange={(e) =>
+                                    setFilter({ memberId: e.target.value })
+                                }
+                                className="px-2.5 py-1.5 bg-surface border border-border rounded-[8px] text-xs text-text-primary focus:outline-none focus:ring-2 focus:ring-coral/20 focus:border-coral transition-colors duration-150 min-w-[120px]"
+                            >
+                                <option value="">All members</option>
+                                {members.map((m) => (
+                                    <option key={m.userId} value={m.userId}>
+                                        {m.userId === currentUserId
+                                            ? 'Me'
+                                            : m.userId.slice(0, 8)}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+
                     <div className="flex items-center gap-1.5">
                         <span className="text-xs font-medium text-text-tertiary">
                             From
@@ -341,14 +566,21 @@ function ExpensesList() {
                             className="w-20 px-2.5 py-1.5 bg-surface border border-border rounded-[8px] text-xs font-mono text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-coral/20 focus:border-coral transition-colors duration-150"
                         />
                     </div>
-                    {(dateFrom || dateTo || amountMin || amountMax) && (
+                    {(dateFrom ||
+                        dateTo ||
+                        amountMin ||
+                        amountMax ||
+                        groupId ||
+                        memberId) && (
                         <button
                             onClick={() =>
                                 setFilter({
                                     dateFrom: '',
                                     dateTo: '',
                                     amountMin: '',
-                                    amountMax: ''
+                                    amountMax: '',
+                                    groupId: '',
+                                    memberId: ''
                                 })
                             }
                             className="text-xs font-medium text-coral hover:text-coral-dark transition-colors"
@@ -387,33 +619,39 @@ function ExpensesList() {
             >
                 <table className="w-full">
                     <thead>
-                        <tr className="bg-cream/60">
-                            <th className="px-6 py-3.5 text-left text-xs font-semibold text-text-secondary">
-                                Description
-                            </th>
-                            <th className="px-6 py-3.5 text-left text-xs font-semibold text-text-secondary">
-                                Category
-                            </th>
-                            <th
-                                className="px-6 py-3.5 text-left text-xs font-semibold text-text-secondary cursor-pointer select-none hover:text-coral transition-colors"
-                                onClick={() => toggleSort('date')}
-                            >
-                                Date <SortIcon field="date" />
-                            </th>
-                            <th
-                                className="px-6 py-3.5 text-right text-xs font-semibold text-text-secondary cursor-pointer select-none hover:text-coral transition-colors"
-                                onClick={() => toggleSort('amount')}
-                            >
-                                Amount <SortIcon field="amount" />
-                            </th>
-                            <th className="px-6 py-3.5 w-20"></th>
-                        </tr>
+                        {table.getHeaderGroups().map((headerGroup) => (
+                            <tr key={headerGroup.id} className="bg-cream/60">
+                                {headerGroup.headers.map((header) => {
+                                    const sortable = header.column.getCanSort();
+                                    return (
+                                        <th
+                                            key={header.id}
+                                            onClick={header.column.getToggleSortingHandler()}
+                                            className={`px-6 py-3.5 text-left text-xs font-semibold text-text-secondary ${sortable ? 'cursor-pointer select-none hover:text-coral transition-colors' : ''} ${header.column.id === 'amount' || header.column.id === 'actions' ? 'text-right' : ''}`}
+                                        >
+                                            {header.isPlaceholder
+                                                ? null
+                                                : flexRender(
+                                                      header.column.columnDef
+                                                          .header,
+                                                      header.getContext()
+                                                  )}
+                                            {sortable && (
+                                                <SortIcon
+                                                    column={header.column}
+                                                />
+                                            )}
+                                        </th>
+                                    );
+                                })}
+                            </tr>
+                        ))}
                     </thead>
                     <tbody>
-                        {filtered.length === 0 ? (
+                        {rows.length === 0 ? (
                             <tr>
                                 <td
-                                    colSpan={4}
+                                    colSpan={columns.length}
                                     className="px-6 py-16 text-center"
                                 >
                                     <svg
@@ -444,9 +682,9 @@ function ExpensesList() {
                                 </td>
                             </tr>
                         ) : (
-                            filtered.map((expense, i) => (
+                            rows.map((row, i) => (
                                 <tr
-                                    key={expense.id}
+                                    key={row.id}
                                     className="border-b border-border-light last:border-0 hover:bg-cream/40 transition-colors duration-150 group"
                                     style={{
                                         opacity: revealed ? 1 : 0,
@@ -456,114 +694,62 @@ function ExpensesList() {
                                         transition: `all 0.4s cubic-bezier(0.22, 1, 0.36, 1) ${0.3 + i * 0.04}s`
                                     }}
                                 >
-                                    <td className="px-6 py-4 text-sm font-medium text-text-primary group-hover:text-coral transition-colors duration-150">
-                                        <div className="flex items-center gap-2">
-                                            <span>{expense.description}</span>
-                                            {expense.receiptUrl && (
-                                                <a
-                                                    href={expense.receiptUrl}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    onClick={(e) =>
-                                                        e.stopPropagation()
-                                                    }
-                                                    className="text-text-tertiary hover:text-coral transition-colors shrink-0"
-                                                    title="View receipt"
-                                                >
-                                                    <svg
-                                                        width="14"
-                                                        height="14"
-                                                        viewBox="0 0 24 24"
-                                                        fill="none"
-                                                        stroke="currentColor"
-                                                        strokeWidth="2"
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                    >
-                                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                                                        <polyline points="14 2 14 8 20 8" />
-                                                        <line
-                                                            x1="16"
-                                                            y1="13"
-                                                            x2="8"
-                                                            y2="13"
-                                                        />
-                                                        <line
-                                                            x1="16"
-                                                            y1="17"
-                                                            x2="8"
-                                                            y2="17"
-                                                        />
-                                                    </svg>
-                                                </a>
+                                    {row.getVisibleCells().map((cell) => (
+                                        <td
+                                            key={cell.id}
+                                            className={`px-6 py-4 text-sm text-text-primary ${cell.column.id === 'amount' || cell.column.id === 'actions' ? 'text-right' : ''}`}
+                                        >
+                                            {flexRender(
+                                                cell.column.columnDef.cell,
+                                                cell.getContext()
                                             )}
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-coral-light/60 text-coral">
-                                            {expense.categoryName}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 text-sm text-text-secondary">
-                                        {new Date(
-                                            expense.date
-                                        ).toLocaleDateString()}
-                                    </td>
-                                    <td className="px-6 py-4 text-sm font-mono font-semibold text-text-primary text-right whitespace-nowrap">
-                                        ${Number(expense.amount).toFixed(2)}
-                                    </td>
-                                    <td className="px-6 py-4 text-right">
-                                        <div className="flex items-center justify-end gap-1">
-                                            <IconButton
-                                                onClick={() =>
-                                                    setEditingExpense(expense)
-                                                }
-                                                ariaLabel="Edit expense"
-                                                className="opacity-0 group-hover:opacity-100"
-                                            >
-                                                <svg
-                                                    width="14"
-                                                    height="14"
-                                                    viewBox="0 0 24 24"
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    strokeWidth="2"
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                >
-                                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                                                </svg>
-                                            </IconButton>
-                                            <IconButton
-                                                onClick={() =>
-                                                    setDeleteConfirm(
-                                                        expense.id
-                                                    )
-                                                }
-                                                ariaLabel="Delete expense"
-                                                className="opacity-0 group-hover:opacity-100"
-                                            >
-                                                <svg
-                                                    width="14"
-                                                    height="14"
-                                                    viewBox="0 0 24 24"
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    strokeWidth="2"
-                                                    strokeLinecap="round"
-                                                >
-                                                    <polyline points="3 6 5 6 21 6" />
-                                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                                                </svg>
-                                            </IconButton>
-                                        </div>
-                                    </td>
+                                        </td>
+                                    ))}
                                 </tr>
                             ))
                         )}
                     </tbody>
                 </table>
+
+                {/* Pagination */}
+                {table.getPageCount() > 1 && (
+                    <div className="flex items-center justify-between px-6 py-4 border-t border-border-light">
+                        <div className="text-xs text-text-secondary">
+                            Page {table.getState().pagination.pageIndex + 1} of{' '}
+                            {table.getPageCount()}
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => table.firstPage()}
+                                disabled={!table.getCanPreviousPage()}
+                                className="px-2.5 py-1.5 text-xs font-medium rounded-[8px] border border-border bg-surface text-text-secondary hover:bg-cream disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                            >
+                                {'<<'}
+                            </button>
+                            <button
+                                onClick={() => table.previousPage()}
+                                disabled={!table.getCanPreviousPage()}
+                                className="px-3 py-1.5 text-xs font-medium rounded-[8px] border border-border bg-surface text-text-secondary hover:bg-cream disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                            >
+                                Previous
+                            </button>
+                            <button
+                                onClick={() => table.nextPage()}
+                                disabled={!table.getCanNextPage()}
+                                className="px-3 py-1.5 text-xs font-medium rounded-[8px] border border-border bg-surface text-text-secondary hover:bg-cream disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                            >
+                                Next
+                            </button>
+                            <button
+                                onClick={() => table.lastPage()}
+                                disabled={!table.getCanNextPage()}
+                                className="px-2.5 py-1.5 text-xs font-medium rounded-[8px] border border-border bg-surface text-text-secondary hover:bg-cream disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                            >
+                                {'>>'}
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Delete Confirmation Modal */}
@@ -636,5 +822,30 @@ function ExpensesList() {
                 expense={editingExpense}
             />
         </div>
+    );
+}
+
+function SortIcon({
+    column
+}: {
+    column: Column<ExpenseRow, unknown>;
+}) {
+    const sorted = column.getIsSorted();
+    return (
+        <svg
+            className={`inline-block ml-1 transition-transform duration-150 ${sorted ? 'opacity-100' : 'opacity-0'}`}
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            style={{
+                transform: sorted === 'asc' ? 'rotate(180deg)' : undefined
+            }}
+        >
+            <polyline points="6 9 12 15 18 9" />
+        </svg>
     );
 }

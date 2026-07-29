@@ -1,28 +1,39 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useForm } from '@tanstack/react-form';
 import { useCreateExpense, useUpdateExpense } from '../lib/hooks';
 import { CategoryPicker } from './category-picker';
+import { ReceiptUpload } from './receipt-upload';
+import {
+    validateAmount,
+    validateCategoryId,
+    validateDate,
+    validateDescription
+} from './add-expense-dialog.validators';
 import type { Expense } from '@expense/shared';
 
-interface FormState {
+interface FormValues {
     amount: string;
     description: string;
     categoryId: string;
     date: string;
+    receiptUrl: string | undefined;
 }
 
-const emptyForm: FormState = {
+const emptyForm: FormValues = {
     amount: '',
     description: '',
     categoryId: '',
-    date: new Date().toISOString().split('T')[0]
+    date: new Date().toISOString().split('T')[0],
+    receiptUrl: undefined
 };
 
-function formFromExpense(expense: Expense): FormState {
+function formFromExpense(expense: Expense): FormValues {
     return {
         amount: String(Number(expense.amount)),
         description: expense.description,
         categoryId: expense.categoryId,
-        date: new Date(expense.date).toISOString().split('T')[0]
+        date: new Date(expense.date).toISOString().split('T')[0],
+        receiptUrl: expense.receiptUrl
     };
 }
 
@@ -40,33 +51,61 @@ export function AddExpenseDialog({
     expense
 }: AddExpenseDialogProps) {
     const isEditing = !!expense;
-
-    const [form, setForm] = useState<FormState>(emptyForm);
-    const [errors, setErrors] = useState<Record<string, string>>({});
-    const [submitting, setSubmitting] = useState(false);
     const [showCheck, setShowCheck] = useState(false);
+    const [submitError, setSubmitError] = useState<string | null>(null);
 
     const createExpense = useCreateExpense();
     const updateExpense = useUpdateExpense();
 
-    const updateField = useCallback(
-        (field: keyof FormState, value: string) => {
-            setForm((prev) => ({ ...prev, [field]: value }));
-        },
-        []
-    );
+    const form = useForm({
+        defaultValues: emptyForm,
+        onSubmit: async ({ value }) => {
+            setSubmitError(null);
+            try {
+                const payload = {
+                    amount: parseFloat(value.amount),
+                    description: value.description.trim(),
+                    categoryId: value.categoryId,
+                    date: new Date(value.date).toISOString(),
+                    receiptUrl: value.receiptUrl
+                };
 
-    // Pre-fill fields when editing
+                if (isEditing && expense) {
+                    await updateExpense.mutateAsync({
+                        id: expense.id,
+                        ...payload
+                    });
+                } else {
+                    await createExpense.mutateAsync(payload);
+                }
+
+                setShowCheck(true);
+                setTimeout(() => {
+                    onSuccess?.();
+                    onClose();
+                }, 900);
+            } catch (err: any) {
+                setSubmitError(
+                    err?.message ??
+                        `Failed to ${isEditing ? 'update' : 'create'} expense`
+                );
+            }
+        }
+    });
+
+    // Reset form whenever the dialog opens/closes or the expense changes
     useEffect(() => {
-        setForm(expense ? formFromExpense(expense) : emptyForm);
-        setErrors({});
-        setShowCheck(false);
-    }, [expense, open]);
+        if (open) {
+            form.reset(expense ? formFromExpense(expense) : emptyForm);
+            setShowCheck(false);
+            setSubmitError(null);
+        }
+    }, [open, expense, form]);
 
     const handleClose = useCallback(() => {
-        if (submitting) return;
+        if (form.state.isSubmitting) return;
         onClose();
-    }, [onClose, submitting]);
+    }, [onClose, form.state.isSubmitting]);
 
     // Close on Escape
     useEffect(() => {
@@ -78,61 +117,13 @@ export function AddExpenseDialog({
         return () => window.removeEventListener('keydown', handler);
     }, [open, handleClose]);
 
-    const validate = () => {
-        const errs: Record<string, string> = {};
-        if (!form.amount || parseFloat(form.amount) <= 0)
-            errs.amount = 'Enter a valid amount';
-        if (!form.description.trim())
-            errs.description = 'Description is required';
-        if (!form.categoryId) errs.category = 'Select a category';
-        setErrors(errs);
-        return Object.keys(errs).length === 0;
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!validate()) return;
-
-        setSubmitting(true);
-        try {
-            if (isEditing && expense) {
-                await updateExpense.mutateAsync({
-                    id: expense.id,
-                    amount: parseFloat(form.amount),
-                    description: form.description.trim(),
-                    categoryId: form.categoryId,
-                    date: new Date(form.date).toISOString()
-                });
-            } else {
-                await createExpense.mutateAsync({
-                    amount: parseFloat(form.amount),
-                    description: form.description.trim(),
-                    categoryId: form.categoryId,
-                    date: new Date(form.date).toISOString()
-                });
-            }
-
-            setShowCheck(true);
-            setSubmitting(false);
-
-            setTimeout(() => {
-                onSuccess?.();
-                handleClose();
-            }, 900);
-        } catch (err: any) {
-            setErrors({
-                submit: err?.message ?? `Failed to ${isEditing ? 'update' : 'create'} expense`
-            });
-            setSubmitting(false);
-        }
-    };
-
     if (!open) return null;
 
     return (
         <div
             onClick={(e) => {
-                if (e.target === e.currentTarget && !submitting) handleClose();
+                if (e.target === e.currentTarget && !form.state.isSubmitting)
+                    handleClose();
             }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4"
             style={{ animation: 'fadeIn 0.2s ease-out' }}
@@ -194,7 +185,7 @@ export function AddExpenseDialog({
                     <button
                         type="button"
                         onClick={handleClose}
-                        disabled={submitting}
+                        disabled={form.state.isSubmitting}
                         className="p-1 rounded-[6px] text-text-tertiary hover:text-text-primary hover:bg-cream/60 transition-colors"
                         aria-label="Close"
                         data-cuelume-press
@@ -215,127 +206,201 @@ export function AddExpenseDialog({
                 </div>
 
                 {/* Form */}
-                <form onSubmit={handleSubmit} className="px-5 py-4 space-y-4">
-                    {errors.submit && (
+                <form
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        form.handleSubmit();
+                    }}
+                    className="px-5 py-4 space-y-4"
+                >
+                    {submitError && (
                         <div className="p-2.5 rounded-[8px] bg-error/10 border border-error/20 text-xs text-error font-medium">
-                            {errors.submit}
+                            {submitError}
                         </div>
                     )}
 
                     {/* Amount */}
-                    <div>
-                        <label className="block text-xs font-semibold text-text-secondary mb-1.5">
-                            Amount
-                        </label>
-                        <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary font-mono text-sm">
-                                $
-                            </span>
-                            <input
-                                autoFocus
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                placeholder="0.00"
-                                value={form.amount}
-                                onChange={(e) =>
-                                    updateField('amount', e.target.value)
-                                }
-                                className={`w-full pl-7 pr-3 py-2 bg-surface border rounded-[8px] text-sm font-mono text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-coral/20 focus:border-coral transition-colors duration-150 ${errors.amount ? 'border-error' : 'border-border'}`}
-                            />
-                        </div>
-                        {errors.amount && (
-                            <p className="text-xs text-error mt-1">
-                                {errors.amount}
-                            </p>
+                    <form.Field
+                        name="amount"
+                        validators={{
+                            onChange: validateAmount,
+                            onSubmit: validateAmount
+                        }}
+                    >
+                        {(field) => (
+                            <div>
+                                <label className="block text-xs font-semibold text-text-secondary mb-1.5">
+                                    Amount
+                                </label>
+                                <div className="relative">
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary font-mono text-sm">
+                                        $
+                                    </span>
+                                    <input
+                                        autoFocus
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        placeholder="0.00"
+                                        value={field.state.value}
+                                        onBlur={field.handleBlur}
+                                        onChange={(e) =>
+                                            field.handleChange(e.target.value)
+                                        }
+                                        className={`w-full pl-7 pr-3 py-2 bg-surface border rounded-[8px] text-sm font-mono text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-coral/20 focus:border-coral transition-colors duration-150 ${field.state.meta.errors.length > 0 ? 'border-error' : 'border-border'}`}
+                                    />
+                                </div>
+                                {field.state.meta.errors.length > 0 && (
+                                    <p className="text-xs text-error mt-1">
+                                        {field.state.meta.errors[0]}
+                                    </p>
+                                )}
+                            </div>
                         )}
-                    </div>
+                    </form.Field>
 
                     {/* Description */}
-                    <div>
-                        <label className="block text-xs font-semibold text-text-secondary mb-1.5">
-                            Description
-                        </label>
-                        <input
-                            type="text"
-                            placeholder="What was this for?"
-                            value={form.description}
-                            onChange={(e) =>
-                                updateField('description', e.target.value)
-                            }
-                            className={`w-full px-3 py-2 bg-surface border rounded-[8px] text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-coral/20 focus:border-coral transition-colors duration-150 ${errors.description ? 'border-error' : 'border-border'}`}
-                        />
-                        {errors.description && (
-                            <p className="text-xs text-error mt-1">
-                                {errors.description}
-                            </p>
+                    <form.Field
+                        name="description"
+                        validators={{
+                            onChange: validateDescription,
+                            onSubmit: validateDescription
+                        }}
+                    >
+                        {(field) => (
+                            <div>
+                                <label className="block text-xs font-semibold text-text-secondary mb-1.5">
+                                    Description
+                                </label>
+                                <input
+                                    type="text"
+                                    placeholder="What was this for?"
+                                    value={field.state.value}
+                                    onBlur={field.handleBlur}
+                                    onChange={(e) =>
+                                        field.handleChange(e.target.value)
+                                    }
+                                    className={`w-full px-3 py-2 bg-surface border rounded-[8px] text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-coral/20 focus:border-coral transition-colors duration-150 ${field.state.meta.errors.length > 0 ? 'border-error' : 'border-border'}`}
+                                />
+                                {field.state.meta.errors.length > 0 && (
+                                    <p className="text-xs text-error mt-1">
+                                        {field.state.meta.errors[0]}
+                                    </p>
+                                )}
+                            </div>
                         )}
-                    </div>
+                    </form.Field>
 
                     {/* Category */}
-                    <div>
-                        <label className="block text-xs font-semibold text-text-secondary mb-1.5">
-                            Category
-                        </label>
-                        <div className="grid grid-cols-3 gap-1.5">
-                            <CategoryPicker
-                                selectedId={form.categoryId}
-                                onSelect={(id) => updateField('categoryId', id)}
-                            />
-                        </div>
-                        {errors.category && (
-                            <p className="text-xs text-error mt-1">
-                                {errors.category}
-                            </p>
+                    <form.Field
+                        name="categoryId"
+                        validators={{
+                            onChange: validateCategoryId,
+                            onSubmit: validateCategoryId
+                        }}
+                    >
+                        {(field) => (
+                            <div>
+                                <label className="block text-xs font-semibold text-text-secondary mb-1.5">
+                                    Category
+                                </label>
+                                <div className="grid grid-cols-3 gap-1.5">
+                                    <CategoryPicker
+                                        selectedId={field.state.value}
+                                        onSelect={field.handleChange}
+                                    />
+                                </div>
+                                {field.state.meta.errors.length > 0 && (
+                                    <p className="text-xs text-error mt-1">
+                                        {field.state.meta.errors[0]}
+                                    </p>
+                                )}
+                            </div>
                         )}
-                    </div>
+                    </form.Field>
 
                     {/* Date */}
-                    <div>
-                        <label className="block text-xs font-semibold text-text-secondary mb-1.5">
-                            Date
-                        </label>
-                        <input
-                            type="date"
-                            value={form.date}
-                            onChange={(e) =>
-                                updateField('date', e.target.value)
-                            }
-                            className="w-full px-3 py-2 bg-surface border border-border rounded-[8px] text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-coral/20 focus:border-coral transition-colors duration-150"
-                        />
-                    </div>
+                    <form.Field
+                        name="date"
+                        validators={{
+                            onChange: validateDate,
+                            onSubmit: validateDate
+                        }}
+                    >
+                        {(field) => (
+                            <div>
+                                <label className="block text-xs font-semibold text-text-secondary mb-1.5">
+                                    Date
+                                </label>
+                                <input
+                                    type="date"
+                                    value={field.state.value}
+                                    onBlur={field.handleBlur}
+                                    onChange={(e) =>
+                                        field.handleChange(e.target.value)
+                                    }
+                                    className={`w-full px-3 py-2 bg-surface border rounded-[8px] text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-coral/20 focus:border-coral transition-colors duration-150 ${field.state.meta.errors.length > 0 ? 'border-error' : 'border-border'}`}
+                                />
+                                {field.state.meta.errors.length > 0 && (
+                                    <p className="text-xs text-error mt-1">
+                                        {field.state.meta.errors[0]}
+                                    </p>
+                                )}
+                            </div>
+                        )}
+                    </form.Field>
+
+                    {/* Receipt */}
+                    <form.Field name="receiptUrl">
+                        {(field) => (
+                            <div>
+                                <label className="block text-xs font-semibold text-text-secondary mb-1.5">
+                                    Receipt
+                                </label>
+                                <ReceiptUpload
+                                    value={field.state.value}
+                                    onChange={field.handleChange}
+                                />
+                            </div>
+                        )}
+                    </form.Field>
 
                     {/* Actions */}
-                    <div className="flex gap-2.5 pt-1">
-                        <button
-                            type="button"
-                            onClick={handleClose}
-                            disabled={submitting}
-                            className="flex-1 px-4 py-2.5 bg-white border border-border text-text-secondary text-sm font-medium rounded-[10px] hover:bg-cream transition-colors duration-150 disabled:opacity-50"
-                            data-cuelume-press
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={
-                                submitting ||
-                                !form.amount ||
-                                !form.description.trim() ||
-                                !form.categoryId
-                            }
-                            className="flex-1 px-4 py-2.5 bg-coral text-white text-sm font-semibold rounded-[10px] hover:bg-coral-dark active:scale-[0.98] transition-colors transition-transform duration-150 disabled:opacity-50 shadow-warm-sm"
-                            data-cuelume-press
-                        >
-                            {submitting
-                                ? isEditing
-                                    ? 'Saving...'
-                                    : 'Adding...'
-                                : isEditing
-                                  ? 'Save Changes'
-                                  : 'Add Expense'}
-                        </button>
-                    </div>
+                    <form.Subscribe
+                        selector={(state) => ({
+                            canSubmit: state.canSubmit,
+                            isSubmitting: state.isSubmitting
+                        })}
+                    >
+                        {({ canSubmit, isSubmitting }) => (
+                            <div className="flex gap-2.5 pt-1">
+                                <button
+                                    type="button"
+                                    onClick={handleClose}
+                                    disabled={isSubmitting}
+                                    className="flex-1 px-4 py-2.5 bg-white border border-border text-text-secondary text-sm font-medium rounded-[10px] hover:bg-cream transition-colors duration-150 disabled:opacity-50"
+                                    data-cuelume-press
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={!canSubmit}
+                                    className="flex-1 px-4 py-2.5 bg-coral text-white text-sm font-semibold rounded-[10px] hover:bg-coral-dark active:scale-[0.98] transition-colors transition-transform duration-150 disabled:opacity-50 shadow-warm-sm"
+                                    data-cuelume-press
+                                >
+                                    {isSubmitting
+                                        ? isEditing
+                                            ? 'Saving...'
+                                            : 'Adding...'
+                                        : isEditing
+                                          ? 'Save Changes'
+                                          : 'Add Expense'}
+                                </button>
+                            </div>
+                        )}
+                    </form.Subscribe>
                 </form>
 
                 {/* Quick option to full form — only show for create mode */}

@@ -12,6 +12,6 @@
     "test": "pnpm --filter server test",
     "lint": "pnpm --parallel -r run lint",
     "format": "pnpm --parallel -r run format",
-    "typecheck": "pnpm --parallel -r run typecheck"
+    "typecheck": "pnpm --filter shared build && pnpm --parallel -r run typecheck"
   }
 }

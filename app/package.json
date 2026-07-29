@@ -8,6 +8,7 @@
         "build": "tsc -b && vite build",
         "preview": "vite preview",
         "typecheck": "tsc --noEmit",
+        "test": "vitest run",
         "lint": "eslint src/",
         "format": "prettier . --write"
     },
@@ -30,16 +31,19 @@
         "@tailwindcss/vite": "^4.3.3",
         "@tanstack/router-devtools": "^1.167.0",
         "@tanstack/router-plugin": "^1.168.23",
+        "@testing-library/react": "^16.3.2",
         "@types/react": "^19.1.4",
         "@types/react-dom": "^19.1.5",
         "@vitejs/plugin-react": "^6.0.4",
         "eslint": "^10.8.0",
         "eslint-plugin-react": "^7.37.5",
         "globals": "^17.7.0",
+        "jsdom": "^30.0.0",
         "prettier": "3.9.6",
         "tailwindcss": "^4.3.3",
         "typescript": "^5.8.3",
         "typescript-eslint": "^8.65.0",
-        "vite": "^8.1.5"
+        "vite": "^8.1.5",
+        "vitest": "^4.1.10"
     }
 }

@@ -491,8 +491,7 @@ function Dashboard() {
                 style={{
                     opacity: revealed ? 1 : 0,
                     transform: revealed ? 'none' : 'translateY(12px)',
-                    transition:
-                        'all 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.35s'
+                    transition: 'all 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.35s'
                 }}
             >
                 <h2 className="text-base font-semibold text-text-primary mb-6">
@@ -530,13 +529,14 @@ function Dashboard() {
                                         fontSize: 12,
                                         fill: 'var(--color-text-tertiary)'
                                     }}
-                                    tickFormatter={(v: number | string) => `$${v}`}
+                                    tickFormatter={(v: number | string) =>
+                                        `$${v}`
+                                    }
                                     width={40}
                                 />
                                 <Tooltip
                                     contentStyle={{
-                                        backgroundColor:
-                                            'var(--color-surface)',
+                                        backgroundColor: 'var(--color-surface)',
                                         border: '1px solid var(--color-border)',
                                         borderRadius: '10px',
                                         boxShadow:

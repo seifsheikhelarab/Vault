@@ -3,9 +3,12 @@ import type { ApiResponse, ApiError, PaginatedData } from '@expense/shared';
 const BASE = '/api';
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+    const isFormData = init?.body instanceof FormData;
     const res = await fetch(`${BASE}${path}`, {
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json', ...init?.headers },
+        headers: isFormData
+            ? init?.headers
+            : { 'Content-Type': 'application/json', ...init?.headers },
         ...init
     });
     const json = (await res.json()) as ApiResponse<T> | ApiError;
@@ -218,6 +221,19 @@ export const claimsApi = {
 
 export const companyApi = {
     summary: () => request<CompanySummary>('/groups/company-summary')
+};
+
+// ─── Uploads ─────────────────────────────────────────────────────
+
+export const uploadsApi = {
+    uploadReceipt: (file: File) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        return request<{ url: string }>('/uploads', {
+            method: 'POST',
+            body: formData
+        });
+    }
 };
 
 // ─── Splits ──────────────────────────────────────────────────────

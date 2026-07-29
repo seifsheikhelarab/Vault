@@ -7,6 +7,7 @@ import {
     membershipsApi,
     settlementsApi,
     splitsApi,
+    uploadsApi,
     claimsApi,
     companyApi
 } from './api';
@@ -67,6 +68,7 @@ export function useUpdateExpense() {
             description?: string;
             date?: string;
             categoryId?: string;
+            receiptUrl?: string;
         }) => expensesApi.update(id, data),
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ['expenses'] });
@@ -83,6 +85,14 @@ export function useDeleteExpense() {
             qc.invalidateQueries({ queryKey: ['expenses'] });
             qc.invalidateQueries({ queryKey: ['dashboard'] });
         }
+    });
+}
+
+// ─── Uploads ─────────────────────────────────────────────────────
+
+export function useUploadReceipt() {
+    return useMutation({
+        mutationFn: (file: File) => uploadsApi.uploadReceipt(file)
     });
 }
 
