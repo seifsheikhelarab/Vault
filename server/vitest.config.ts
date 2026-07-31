@@ -4,6 +4,9 @@ export default defineConfig({
     test: {
         globals: true,
         environment: 'node',
+        // Run test files sequentially — all tests share one Postgres DB
+        // and parallel files cause FK violations / spurious 500s.
+        fileParallelism: false,
         setupFiles: ['./src/test/setup.ts'],
         include: ['src/**/*.test.ts', 'src/**/*.spec.ts'],
         testTimeout: 10_000,

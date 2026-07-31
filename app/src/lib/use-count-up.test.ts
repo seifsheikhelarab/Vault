@@ -35,13 +35,21 @@ describe('useCountUp', () => {
 
     const advanceFrame = (ms: number) => {
         act(() => {
-            currentTimestamp += ms;
-            vi.advanceTimersByTime(ms);
-        });
+            let remaining = ms;
+            // Advance time in 16ms increments (~60fps) to simulate real
+            // rAF frames. Each callback sees a progressively later
+            // timestamp so `elapsed` grows and the animation completes.
+            while (remaining > 0) {
+                const step = Math.min(16, remaining);
+                currentTimestamp += step;
+                vi.advanceTimersByTime(step);
+                remaining -= step;
 
-        const snapshot = Array.from(pending.entries());
-        pending.clear();
-        snapshot.forEach(([, cb]) => cb(currentTimestamp));
+                const snapshot = Array.from(pending.entries());
+                pending.clear();
+                snapshot.forEach(([, cb]) => cb(currentTimestamp));
+            }
+        });
     };
 
     it('immediately shows the target when disabled', () => {

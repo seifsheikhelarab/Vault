@@ -137,10 +137,19 @@ beforeAll(async () => {
 
 /**
  * Cleans up test data after all tests complete.
+ * Expenses must be deleted before users because
+ * expense.category_id → category.id is ON DELETE RESTRICT,
+ * and user deletion cascades to categories before expenses.
  */
 afterAll(async () => {
     if (authContext) {
-        // Delete both users (cascade removes their categories, groups, memberships, etc.)
+        // Delete expenses first to avoid FK ordering issues
+        const { db } = await import('../lib/db');
+        const { expenses } = await import('../lib/db/schema');
+        await db.delete(expenses);
+
+        // Now safe to delete users (cascade handles categories, groups,
+        // memberships, splits, settlements, and budgets)
         if (testUser) await authContext.test.deleteUser(testUser.id);
         if (secondUser) await authContext.test.deleteUser(secondUser.id);
     }

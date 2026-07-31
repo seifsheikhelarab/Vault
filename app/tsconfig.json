@@ -13,9 +13,9 @@
         "allowImportingTsExtensions": true,
         "noEmit": true,
         "paths": {
-            "@expense/shared": ["../packages/shared/dist"]
-        },
-        "baseUrl": "."
+            "@expense/shared": ["../packages/shared/dist"],
+            "*": ["./*"]
+        }
     },
     "include": ["src/**/*"],
     "exclude": ["node_modules"],

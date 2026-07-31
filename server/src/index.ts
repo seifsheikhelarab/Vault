@@ -20,6 +20,15 @@ import uploadRouter from './resources/uploads/upload.router';
 
 const app = new Hono();
 
+// Global error handler — returns JSON instead of HTML
+app.onError((err, c) => {
+    console.error('[unhandled]', err);
+    return c.json(
+        { success: false, error: { code: 'INTERNAL_ERROR', message: err.message || 'Internal Server Error' } },
+        500
+    );
+});
+
 // Global middleware
 app.use('*', logger());
 app.use(
