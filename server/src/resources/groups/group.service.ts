@@ -1,6 +1,14 @@
 import { eq, and, desc, sql, inArray } from 'drizzle-orm';
 import { db } from '../../lib/db';
-import { groups, memberships, expenses, splits, settlements, budgets, claims as claimsTable } from '../../lib/db/schema';
+import {
+    groups,
+    memberships,
+    expenses,
+    splits,
+    settlements,
+    budgets,
+    claims as claimsTable
+} from '../../lib/db/schema';
 import type { CreateGroupInput, UpdateGroupInput } from './group.schema';
 
 export class GroupService {
@@ -38,7 +46,9 @@ export class GroupService {
         const [membership] = await db
             .select()
             .from(memberships)
-            .where(and(eq(memberships.groupId, id), eq(memberships.userId, userId)));
+            .where(
+                and(eq(memberships.groupId, id), eq(memberships.userId, userId))
+            );
         if (!membership) return { error: 'FORBIDDEN' as const };
 
         const [g] = await db.select().from(groups).where(eq(groups.id, id));
@@ -49,7 +59,9 @@ export class GroupService {
         const [membership] = await db
             .select()
             .from(memberships)
-            .where(and(eq(memberships.groupId, id), eq(memberships.userId, userId)));
+            .where(
+                and(eq(memberships.groupId, id), eq(memberships.userId, userId))
+            );
         if (!membership) return { error: 'FORBIDDEN' as const };
         if (membership.role !== 'admin') return { error: 'NOT_ADMIN' as const };
 
@@ -65,7 +77,9 @@ export class GroupService {
         const [membership] = await db
             .select()
             .from(memberships)
-            .where(and(eq(memberships.groupId, id), eq(memberships.userId, userId)));
+            .where(
+                and(eq(memberships.groupId, id), eq(memberships.userId, userId))
+            );
         if (!membership) return { error: 'FORBIDDEN' as const };
         if (membership.role !== 'admin') return { error: 'NOT_ADMIN' as const };
 
@@ -77,7 +91,12 @@ export class GroupService {
         const [membership] = await db
             .select()
             .from(memberships)
-            .where(and(eq(memberships.groupId, groupId), eq(memberships.userId, userId)));
+            .where(
+                and(
+                    eq(memberships.groupId, groupId),
+                    eq(memberships.userId, userId)
+                )
+            );
         if (!membership) return null;
 
         const groupExpenses = await db
@@ -118,7 +137,9 @@ export class GroupService {
         }
 
         const debts: { from: string; to: string; amount: number }[] = [];
-        const entries = Object.entries(net).filter(([, v]) => Math.abs(v) > 0.01);
+        const entries = Object.entries(net).filter(
+            ([, v]) => Math.abs(v) > 0.01
+        );
         const debtors = entries
             .filter(([, v]) => v < 0)
             .sort((a, b) => a[1] - b[1]);
@@ -153,7 +174,12 @@ export class GroupService {
             .select({ group: groups })
             .from(groups)
             .innerJoin(memberships, eq(memberships.groupId, groups.id))
-            .where(and(eq(groups.kind, 'department'), eq(memberships.userId, userId)))
+            .where(
+                and(
+                    eq(groups.kind, 'department'),
+                    eq(memberships.userId, userId)
+                )
+            )
             .orderBy(desc(groups.createdAt));
         const departmentGroups = userGroups.map((r) => r.group);
 
@@ -200,12 +226,19 @@ export class GroupService {
             .where(inArray(memberships.groupId, groupIds))
             .groupBy(memberships.groupId);
 
-        const memberCountMap = new Map(memberCounts.map((m) => [m.groupId, m.count]));
+        const memberCountMap = new Map(
+            memberCounts.map((m) => [m.groupId, m.count])
+        );
 
         const myMemberships = await db
             .select()
             .from(memberships)
-            .where(and(inArray(memberships.groupId, groupIds), eq(memberships.userId, userId)));
+            .where(
+                and(
+                    inArray(memberships.groupId, groupIds),
+                    eq(memberships.userId, userId)
+                )
+            );
         const roleMap = new Map(myMemberships.map((m) => [m.groupId, m.role]));
 
         const departments = departmentGroups.map((g) => {
@@ -215,9 +248,17 @@ export class GroupService {
                 deptExpenses.some((e) => e.id === c.expenseId)
             );
 
-            const totalBudget = deptBudgets.reduce((s, b) => s + Number(b.amount), 0);
-            const totalSpent = deptExpenses.reduce((s, e) => s + Number(e.amount), 0);
-            const pendingClaims = deptClaims.filter((c) => c.status === 'submitted').length;
+            const totalBudget = deptBudgets.reduce(
+                (s, b) => s + Number(b.amount),
+                0
+            );
+            const totalSpent = deptExpenses.reduce(
+                (s, e) => s + Number(e.amount),
+                0
+            );
+            const pendingClaims = deptClaims.filter(
+                (c) => c.status === 'submitted'
+            ).length;
 
             return {
                 id: g.id,
@@ -228,7 +269,9 @@ export class GroupService {
                 totalBudget,
                 totalSpent,
                 budgetUtilization:
-                    totalBudget > 0 ? Math.round((totalSpent / totalBudget) * 100) : 0,
+                    totalBudget > 0
+                        ? Math.round((totalSpent / totalBudget) * 100)
+                        : 0,
                 pendingClaims,
                 expenseCount: deptExpenses.length
             };
@@ -236,7 +279,10 @@ export class GroupService {
 
         const totalBudget = departments.reduce((s, d) => s + d.totalBudget, 0);
         const totalSpent = departments.reduce((s, d) => s + d.totalSpent, 0);
-        const pendingClaims = departments.reduce((s, d) => s + d.pendingClaims, 0);
+        const pendingClaims = departments.reduce(
+            (s, d) => s + d.pendingClaims,
+            0
+        );
 
         return { departments, totalBudget, totalSpent, pendingClaims };
     }

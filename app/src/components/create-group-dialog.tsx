@@ -48,7 +48,7 @@ export function CreateGroupDialog({
         try {
             if (groupKind === 'department') {
                 // Create a Better Auth organization for departments
-                const org = await createOrganization.mutateAsync({
+                await createOrganization.mutateAsync({
                     name: name.trim(),
                     slug:
                         name.trim().toLowerCase().replace(/\s+/g, '-') +
@@ -224,7 +224,7 @@ export function CreateGroupDialog({
                             <label className="block text-xs font-semibold text-text-secondary mb-1.5">
                                 Type
                             </label>
-                            <div className="flex gap-2 p-1 bg-cream/60 rounded-[8px]">
+                            <div className="flex gap-2 p-1 bg-cream/60 dark:bg-white/[0.06] rounded-[8px]">
                                 {(['social', 'department'] as const).map(
                                     (opt) => (
                                         <button
@@ -237,7 +237,7 @@ export function CreateGroupDialog({
                                             data-cuelume-toggle
                                             className={`flex-1 py-2 px-3 rounded-[6px] text-xs font-medium transition-colors duration-150 ${
                                                 groupKind === opt
-                                                    ? 'bg-white text-text-primary shadow-warm-sm'
+                                                    ? 'bg-surface dark:bg-[#2a2a2a] text-text-primary shadow-warm-sm'
                                                     : 'text-text-tertiary hover:text-text-secondary'
                                             }`}
                                         >
@@ -264,7 +264,7 @@ export function CreateGroupDialog({
                             type="button"
                             onClick={handleClose}
                             disabled={submitting}
-                            className="flex-1 px-4 py-2.5 bg-white border border-border text-text-secondary text-sm font-medium rounded-[10px] hover:bg-cream transition-colors duration-150 disabled:opacity-50"
+                            className="flex-1 px-4 py-2.5 bg-surface border border-border text-text-secondary text-sm font-medium rounded-[10px] hover:bg-cream transition-colors duration-150 disabled:opacity-50"
                             data-cuelume-press
                         >
                             Cancel

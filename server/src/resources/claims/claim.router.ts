@@ -1,7 +1,11 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { ClaimController } from './claim.controller';
-import { createClaimSchema, claimQuerySchema, rejectClaimSchema } from './claim.schema';
+import {
+    createClaimSchema,
+    claimQuerySchema,
+    rejectClaimSchema
+} from './claim.schema';
 import type { AppEnv } from '../../lib/middleware';
 
 const claim = new Hono<AppEnv>();

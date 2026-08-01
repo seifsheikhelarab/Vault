@@ -9,6 +9,11 @@ import {
 import { db } from '../../lib/db';
 import { expenses, groups, memberships } from '../../lib/db/schema';
 
+/** JSON shape of a settlement from GET /api/settlements */
+interface SettlementResponse {
+    fromUserId: string;
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────
 
 /** Creates a social group with the second user as a member */
@@ -16,7 +21,12 @@ async function createSocialGroup(adminId: string, memberId: string) {
     const groupId = crypto.randomUUID();
     const [g] = await db
         .insert(groups)
-        .values({ id: groupId, name: 'Balance Group', kind: 'social', createdBy: adminId })
+        .values({
+            id: groupId,
+            name: 'Balance Group',
+            kind: 'social',
+            createdBy: adminId
+        })
         .returning();
     await db.insert(memberships).values([
         { id: crypto.randomUUID(), groupId, userId: adminId, role: 'admin' },
@@ -26,7 +36,11 @@ async function createSocialGroup(adminId: string, memberId: string) {
 }
 
 /** Creates a group expense via direct DB insert */
-async function createGroupExpense(userId: string, groupId: string, amount = '100.00') {
+async function createGroupExpense(
+    userId: string,
+    groupId: string,
+    amount = '100.00'
+) {
     const category = getTestCategory();
     const expenseId = crypto.randomUUID();
     await db.insert(expenses).values({
@@ -134,7 +148,7 @@ describe('Settlements API', () => {
             expect(Array.isArray(body.data)).toBe(true);
             expect(body.data.length).toBeGreaterThanOrEqual(1);
             // All returned settlements should be from this user
-            body.data.forEach((s: any) => {
+            body.data.forEach((s: SettlementResponse) => {
                 expect(s.fromUserId).toBe(user.id);
             });
         });
@@ -148,9 +162,12 @@ describe('Settlements API', () => {
             await createSettlement(user.id, secondUser.id, 20, group2.id);
 
             // Filter by group1
-            const res = await app.request(`/api/settlements?groupId=${group1.id}`, {
-                headers: getAuthHeaders(user.id)
-            });
+            const res = await app.request(
+                `/api/settlements?groupId=${group1.id}`,
+                {
+                    headers: getAuthHeaders(user.id)
+                }
+            );
             const body = await res.json();
             expect(body.data.length).toBe(1);
             expect(Number(body.data[0].amount)).toBe(10);
@@ -179,9 +196,12 @@ describe('Settlements API', () => {
                 group.id
             );
 
-            const res = await app.request(`/api/settlements/${created.data.id}`, {
-                headers: getAuthHeaders(user.id)
-            });
+            const res = await app.request(
+                `/api/settlements/${created.data.id}`,
+                {
+                    headers: getAuthHeaders(user.id)
+                }
+            );
             expect(res.status).toBe(200);
             const body = await res.json();
             expect(body.data.id).toBe(created.data.id);
@@ -215,7 +235,11 @@ describe('Balance calculations', () => {
         const group = await createSocialGroup(user.id, secondUser.id);
 
         // User pays $100, splits $50 each
-        const groupExpense = await createGroupExpense(user.id, group.id, '100.00');
+        const groupExpense = await createGroupExpense(
+            user.id,
+            group.id,
+            '100.00'
+        );
         await createSplits(user.id, groupExpense.id, [
             { userId: user.id, amount: 50 },
             { userId: secondUser.id, amount: 50 }
@@ -245,7 +269,11 @@ describe('Balance calculations', () => {
         const group = await createSocialGroup(user.id, secondUser.id);
 
         // User pays $100, but secondUser owes $70 (not even)
-        const groupExpense = await createGroupExpense(user.id, group.id, '100.00');
+        const groupExpense = await createGroupExpense(
+            user.id,
+            group.id,
+            '100.00'
+        );
         await createSplits(user.id, groupExpense.id, [
             { userId: user.id, amount: 30 },
             { userId: secondUser.id, amount: 70 }
@@ -272,7 +300,11 @@ describe('Balance calculations', () => {
 
         // User pays $100, takes $100 split — full self-pay, secondUser owes nothing
         // User net: +100 -100 = 0. secondUser: 0
-        const groupExpense = await createGroupExpense(user.id, group.id, '100.00');
+        const groupExpense = await createGroupExpense(
+            user.id,
+            group.id,
+            '100.00'
+        );
         await createSplits(user.id, groupExpense.id, [
             { userId: user.id, amount: 100 }
         ]);
@@ -284,7 +316,9 @@ describe('Balance calculations', () => {
 
         // Both nets should be near 0 (within 0.01 threshold for debt generation)
         expect(Math.abs(body.data.net[user.id] ?? 0)).toBeLessThanOrEqual(0.01);
-        expect(Math.abs(body.data.net[secondUser.id] ?? 0)).toBeLessThanOrEqual(0.01);
+        expect(Math.abs(body.data.net[secondUser.id] ?? 0)).toBeLessThanOrEqual(
+            0.01
+        );
         expect(body.data.debts).toEqual([]);
     });
 
@@ -294,7 +328,11 @@ describe('Balance calculations', () => {
         const group = await createSocialGroup(user.id, secondUser.id);
 
         // User pays $100, splits 50/50 → secondUser owes $50
-        const groupExpense = await createGroupExpense(user.id, group.id, '100.00');
+        const groupExpense = await createGroupExpense(
+            user.id,
+            group.id,
+            '100.00'
+        );
         await createSplits(user.id, groupExpense.id, [
             { userId: user.id, amount: 50 },
             { userId: secondUser.id, amount: 50 }
@@ -323,7 +361,11 @@ describe('Balance calculations', () => {
         const group = await createSocialGroup(user.id, secondUser.id);
 
         // User pays $100, splits 50/50 → secondUser owes $50
-        const groupExpense = await createGroupExpense(user.id, group.id, '100.00');
+        const groupExpense = await createGroupExpense(
+            user.id,
+            group.id,
+            '100.00'
+        );
         await createSplits(user.id, groupExpense.id, [
             { userId: user.id, amount: 50 },
             { userId: secondUser.id, amount: 50 }
@@ -339,7 +381,9 @@ describe('Balance calculations', () => {
 
         // Everything settled — all nets near 0, no debts
         expect(Math.abs(body.data.net[user.id] ?? 0)).toBeLessThanOrEqual(0.01);
-        expect(Math.abs(body.data.net[secondUser.id] ?? 0)).toBeLessThanOrEqual(0.01);
+        expect(Math.abs(body.data.net[secondUser.id] ?? 0)).toBeLessThanOrEqual(
+            0.01
+        );
         expect(body.data.debts).toEqual([]);
     });
 

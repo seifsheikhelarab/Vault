@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useCategories } from '../lib/hooks';
 
 interface CategoryPickerProps {
@@ -12,6 +13,7 @@ export function CategoryPicker({
     max = 6
 }: CategoryPickerProps) {
     const { data: categories = [], isPending: catLoading } = useCategories();
+    const [expanded, setExpanded] = useState(false);
 
     if (catLoading) {
         return (
@@ -30,13 +32,22 @@ export function CategoryPicker({
         );
     }
 
+    const visible = expanded ? categories : categories.slice(0, max);
+    const hiddenCount = categories.length - max;
+
+    const handleSelect = (id: string) => {
+        onSelect(id);
+        // Collapse back after selection so the picker stays compact
+        if (expanded) setExpanded(false);
+    };
+
     return (
         <>
-            {categories.slice(0, max).map((cat) => (
+            {visible.map((cat) => (
                 <button
                     key={cat.id}
                     type="button"
-                    onClick={() => onSelect(cat.id)}
+                    onClick={() => handleSelect(cat.id)}
                     data-cuelume-press
                     className={`flex flex-col items-center gap-1 py-2 px-1 rounded-[8px] border transition-colors duration-150 ${
                         selectedId === cat.id
@@ -65,10 +76,25 @@ export function CategoryPicker({
                     </span>
                 </button>
             ))}
-            {categories.length > max && (
-                <div className="flex items-center justify-center py-2 px-1 rounded-[8px] border border-dashed border-border-light text-[10px] text-text-tertiary col-span-1">
-                    +{categories.length - max} more
-                </div>
+            {hiddenCount > 0 && (
+                <button
+                    type="button"
+                    onClick={() => setExpanded(!expanded)}
+                    aria-expanded={expanded}
+                    className={`flex flex-col items-center justify-center gap-0.5 py-2 px-1 rounded-[8px] border transition-all duration-200 ${
+                        expanded
+                            ? 'border-coral-light bg-coral-light/30 text-coral'
+                            : 'border-dashed border-border-light hover:border-coral-light hover:bg-cream/50 text-text-tertiary hover:text-text-secondary'
+                    }`}
+                    title={expanded ? 'Show fewer categories' : `Show all ${categories.length} categories`}
+                >
+                    <span className="text-xs leading-none">
+                        {expanded ? '−' : '+'}
+                    </span>
+                    <span className="text-[10px] font-semibold leading-tight text-center">
+                        {expanded ? 'Less' : `${hiddenCount} more`}
+                    </span>
+                </button>
             )}
         </>
     );

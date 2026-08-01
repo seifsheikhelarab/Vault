@@ -8,7 +8,14 @@ import {
 } from '../../test/setup';
 import { db } from '../../lib/db';
 import { expenses, memberships, groups } from '../../lib/db/schema';
-import { eq } from 'drizzle-orm';
+
+
+/** JSON shape of a claim + expense from GET /api/claims */
+interface ClaimResponse {
+    id: string;
+    status: string;
+    expense: { userId: string };
+}
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
@@ -17,7 +24,12 @@ async function createDepartmentWithMember(adminId: string, memberId: string) {
     const groupId = crypto.randomUUID();
     const [g] = await db
         .insert(groups)
-        .values({ id: groupId, name: 'Dept Test', kind: 'department', createdBy: adminId })
+        .values({
+            id: groupId,
+            name: 'Dept Test',
+            kind: 'department',
+            createdBy: adminId
+        })
         .returning();
     await db.insert(memberships).values([
         { id: crypto.randomUUID(), groupId, userId: adminId, role: 'admin' },
@@ -40,7 +52,12 @@ async function createGroupExpense(userId: string, groupId: string) {
         scope: 'company',
         date: new Date()
     });
-    return { id: expenseId, amount: '100.00', description: 'Test expense for claim', userId };
+    return {
+        id: expenseId,
+        amount: '100.00',
+        description: 'Test expense for claim',
+        userId
+    };
 }
 
 /** Creates a claim via the API */
@@ -82,23 +99,35 @@ describe('Claims API', () => {
         it("returns 403 when expense doesn't belong to user", async () => {
             const user = getTestUser();
             const secondUser = getSecondUser();
-            const dept = await createDepartmentWithMember(user.id, secondUser.id);
+            const dept = await createDepartmentWithMember(
+                user.id,
+                secondUser.id
+            );
 
             // Create expense as first user but try to claim as second user
             const groupExpense = await createGroupExpense(user.id, dept.id);
 
-            const { res, body } = await createClaim(secondUser.id, groupExpense.id);
+            const { res, body } = await createClaim(
+                secondUser.id,
+                groupExpense.id
+            );
             expect(res.status).toBe(403);
             expect(body.error.code).toBe('FORBIDDEN');
         });
 
         it('returns 409 when expense already has a claim', async () => {
             const user = getTestUser();
-            const dept = await createDepartmentWithMember(user.id, getSecondUser().id);
+            const dept = await createDepartmentWithMember(
+                user.id,
+                getSecondUser().id
+            );
             const groupExpense = await createGroupExpense(user.id, dept.id);
 
             // First claim — should succeed
-            const { res: firstRes } = await createClaim(user.id, groupExpense.id);
+            const { res: firstRes } = await createClaim(
+                user.id,
+                groupExpense.id
+            );
             expect(firstRes.status).toBe(201);
 
             // Second claim on same expense — should be 409
@@ -114,7 +143,10 @@ describe('Claims API', () => {
 
         it('returns 201 and creates claim with valid data', async () => {
             const user = getTestUser();
-            const dept = await createDepartmentWithMember(user.id, getSecondUser().id);
+            const dept = await createDepartmentWithMember(
+                user.id,
+                getSecondUser().id
+            );
             const groupExpense = await createGroupExpense(user.id, dept.id);
 
             const { res, body } = await createClaim(user.id, groupExpense.id);
@@ -131,7 +163,10 @@ describe('Claims API', () => {
     describe('GET /api/claims', () => {
         it('returns claims for department groups the user belongs to', async () => {
             const user = getTestUser();
-            const dept = await createDepartmentWithMember(user.id, getSecondUser().id);
+            const dept = await createDepartmentWithMember(
+                user.id,
+                getSecondUser().id
+            );
             const groupExpense = await createGroupExpense(user.id, dept.id);
             await createClaim(user.id, groupExpense.id);
 
@@ -149,7 +184,10 @@ describe('Claims API', () => {
 
         it('filters claims by status', async () => {
             const user = getTestUser();
-            const dept = await createDepartmentWithMember(user.id, getSecondUser().id);
+            const dept = await createDepartmentWithMember(
+                user.id,
+                getSecondUser().id
+            );
             const groupExpense = await createGroupExpense(user.id, dept.id);
             await createClaim(user.id, groupExpense.id);
 
@@ -159,7 +197,9 @@ describe('Claims API', () => {
             });
             expect(res.status).toBe(200);
             const body = await res.json();
-            expect(body.data.every((c: any) => c.status === 'submitted')).toBe(true);
+            expect(body.data.every((c: ClaimResponse) => c.status === 'submitted')).toBe(
+                true
+            );
 
             // Should not find any approved claims
             const res2 = await app.request('/api/claims?status=approved', {
@@ -172,7 +212,10 @@ describe('Claims API', () => {
         it('filters claims by userId', async () => {
             const user = getTestUser();
             const secondUser = getSecondUser();
-            const dept = await createDepartmentWithMember(user.id, secondUser.id);
+            const dept = await createDepartmentWithMember(
+                user.id,
+                secondUser.id
+            );
 
             // Both users submit claims
             const exp1 = await createGroupExpense(user.id, dept.id);
@@ -186,7 +229,9 @@ describe('Claims API', () => {
             });
             const body = await res.json();
             expect(body.data.length).toBeGreaterThanOrEqual(1);
-            expect(body.data.every((c: any) => c.expense.userId === user.id)).toBe(true);
+            expect(
+                body.data.every((c: ClaimResponse) => c.expense.userId === user.id)
+            ).toBe(true);
         });
     });
 
@@ -203,14 +248,20 @@ describe('Claims API', () => {
 
         it('returns 200 and approves the claim', async () => {
             const user = getTestUser();
-            const dept = await createDepartmentWithMember(user.id, getSecondUser().id);
+            const dept = await createDepartmentWithMember(
+                user.id,
+                getSecondUser().id
+            );
             const groupExpense = await createGroupExpense(user.id, dept.id);
             const { body: claim } = await createClaim(user.id, groupExpense.id);
 
-            const res = await app.request(`/api/claims/${claim.data.id}/approve`, {
-                method: 'PATCH',
-                headers: getAuthHeaders(user.id)
-            });
+            const res = await app.request(
+                `/api/claims/${claim.data.id}/approve`,
+                {
+                    method: 'PATCH',
+                    headers: getAuthHeaders(user.id)
+                }
+            );
             expect(res.status).toBe(200);
             const body = await res.json();
             expect(body.success).toBe(true);
@@ -234,15 +285,21 @@ describe('Claims API', () => {
 
         it('returns 200 and rejects with a note', async () => {
             const user = getTestUser();
-            const dept = await createDepartmentWithMember(user.id, getSecondUser().id);
+            const dept = await createDepartmentWithMember(
+                user.id,
+                getSecondUser().id
+            );
             const groupExpense = await createGroupExpense(user.id, dept.id);
             const { body: claim } = await createClaim(user.id, groupExpense.id);
 
-            const res = await app.request(`/api/claims/${claim.data.id}/reject`, {
-                method: 'PATCH',
-                headers: getAuthHeaders(user.id),
-                body: JSON.stringify({ note: 'Missing receipt' })
-            });
+            const res = await app.request(
+                `/api/claims/${claim.data.id}/reject`,
+                {
+                    method: 'PATCH',
+                    headers: getAuthHeaders(user.id),
+                    body: JSON.stringify({ note: 'Missing receipt' })
+                }
+            );
             expect(res.status).toBe(200);
             const body = await res.json();
             expect(body.data.status).toBe('rejected');
@@ -255,16 +312,22 @@ describe('Claims API', () => {
     describe('PATCH /api/claims/:id/reimburse', () => {
         it('returns 404 for non-existent claim', async () => {
             const user = getTestUser();
-            const res = await app.request('/api/claims/non-existent/reimburse', {
-                method: 'PATCH',
-                headers: getAuthHeaders(user.id)
-            });
+            const res = await app.request(
+                '/api/claims/non-existent/reimburse',
+                {
+                    method: 'PATCH',
+                    headers: getAuthHeaders(user.id)
+                }
+            );
             expect(res.status).toBe(404);
         });
 
         it('returns 200 and marks as reimbursed', async () => {
             const user = getTestUser();
-            const dept = await createDepartmentWithMember(user.id, getSecondUser().id);
+            const dept = await createDepartmentWithMember(
+                user.id,
+                getSecondUser().id
+            );
             const groupExpense = await createGroupExpense(user.id, dept.id);
             const { body: claim } = await createClaim(user.id, groupExpense.id);
 
@@ -274,10 +337,13 @@ describe('Claims API', () => {
                 headers: getAuthHeaders(user.id)
             });
 
-            const res = await app.request(`/api/claims/${claim.data.id}/reimburse`, {
-                method: 'PATCH',
-                headers: getAuthHeaders(user.id)
-            });
+            const res = await app.request(
+                `/api/claims/${claim.data.id}/reimburse`,
+                {
+                    method: 'PATCH',
+                    headers: getAuthHeaders(user.id)
+                }
+            );
             expect(res.status).toBe(200);
             const body = await res.json();
             expect(body.data.status).toBe('reimbursed');
@@ -288,27 +354,39 @@ describe('Claims API', () => {
     describe('Claim lifecycle', () => {
         it('completes the full submit → approve → reimburse workflow', async () => {
             const user = getTestUser();
-            const dept = await createDepartmentWithMember(user.id, getSecondUser().id);
+            const dept = await createDepartmentWithMember(
+                user.id,
+                getSecondUser().id
+            );
             const groupExpense = await createGroupExpense(user.id, dept.id);
 
             // 1. Submit claim
-            const { body: submitBody } = await createClaim(user.id, groupExpense.id);
+            const { body: submitBody } = await createClaim(
+                user.id,
+                groupExpense.id
+            );
             const claimId = submitBody.data.id;
             expect(submitBody.data.status).toBe('submitted');
 
             // 2. Approve
-            const approveRes = await app.request(`/api/claims/${claimId}/approve`, {
-                method: 'PATCH',
-                headers: getAuthHeaders(user.id)
-            });
+            const approveRes = await app.request(
+                `/api/claims/${claimId}/approve`,
+                {
+                    method: 'PATCH',
+                    headers: getAuthHeaders(user.id)
+                }
+            );
             const approveBody = await approveRes.json();
             expect(approveBody.data.status).toBe('approved');
 
             // 3. Reimburse
-            const reimburseRes = await app.request(`/api/claims/${claimId}/reimburse`, {
-                method: 'PATCH',
-                headers: getAuthHeaders(user.id)
-            });
+            const reimburseRes = await app.request(
+                `/api/claims/${claimId}/reimburse`,
+                {
+                    method: 'PATCH',
+                    headers: getAuthHeaders(user.id)
+                }
+            );
             const reimburseBody = await reimburseRes.json();
             expect(reimburseBody.data.status).toBe('reimbursed');
 
@@ -317,41 +395,60 @@ describe('Claims API', () => {
                 headers: getAuthHeaders(user.id)
             });
             const listBody = await listRes.json();
-            expect(listBody.data.some((c: any) => c.id === claimId)).toBe(true);
+            expect(listBody.data.some((c: ClaimResponse) => c.id === claimId)).toBe(true);
         });
 
         it('completes the full submit → reject workflow', async () => {
             const user = getTestUser();
-            const dept = await createDepartmentWithMember(user.id, getSecondUser().id);
+            const dept = await createDepartmentWithMember(
+                user.id,
+                getSecondUser().id
+            );
             const groupExpense = await createGroupExpense(user.id, dept.id);
 
             // 1. Submit
-            const { body: submitBody } = await createClaim(user.id, groupExpense.id);
+            const { body: submitBody } = await createClaim(
+                user.id,
+                groupExpense.id
+            );
             const claimId = submitBody.data.id;
 
             // 2. Reject with note
-            const rejectRes = await app.request(`/api/claims/${claimId}/reject`, {
-                method: 'PATCH',
-                headers: getAuthHeaders(user.id),
-                body: JSON.stringify({ note: 'Invalid category' })
-            });
+            const rejectRes = await app.request(
+                `/api/claims/${claimId}/reject`,
+                {
+                    method: 'PATCH',
+                    headers: getAuthHeaders(user.id),
+                    body: JSON.stringify({ note: 'Invalid category' })
+                }
+            );
             const rejectBody = await rejectRes.json();
             expect(rejectBody.data.status).toBe('rejected');
             expect(rejectBody.data.reviewNote).toBe('Invalid category');
 
             // 3. Verify it's not in the approved/reimbursed lists
-            const approvedRes = await app.request('/api/claims?status=approved', {
-                headers: getAuthHeaders(user.id)
-            });
+            const approvedRes = await app.request(
+                '/api/claims?status=approved',
+                {
+                    headers: getAuthHeaders(user.id)
+                }
+            );
             const approvedBody = await approvedRes.json();
-            expect(approvedBody.data.some((c: any) => c.id === claimId)).toBe(false);
+            expect(approvedBody.data.some((c: ClaimResponse) => c.id === claimId)).toBe(
+                false
+            );
 
             // 4. But it IS in the rejected list
-            const rejectedRes = await app.request('/api/claims?status=rejected', {
-                headers: getAuthHeaders(user.id)
-            });
+            const rejectedRes = await app.request(
+                '/api/claims?status=rejected',
+                {
+                    headers: getAuthHeaders(user.id)
+                }
+            );
             const rejectedBody = await rejectedRes.json();
-            expect(rejectedBody.data.some((c: any) => c.id === claimId)).toBe(true);
+            expect(rejectedBody.data.some((c: ClaimResponse) => c.id === claimId)).toBe(
+                true
+            );
         });
     });
 });

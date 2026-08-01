@@ -63,6 +63,15 @@ export const categoriesApi = {
         request<import('@expense/shared').Category>('/categories', {
             method: 'POST',
             body: JSON.stringify(data)
+        }),
+    update: (id: string, data: Record<string, unknown>) =>
+        request<import('@expense/shared').Category>(`/categories/${id}`, {
+            method: 'PATCH',
+            body: JSON.stringify(data)
+        }),
+    delete: (id: string) =>
+        request<{ deleted: boolean }>(`/categories/${id}`, {
+            method: 'DELETE'
         })
 };
 
@@ -95,6 +104,11 @@ export const groupsApi = {
             method: 'POST',
             body: JSON.stringify(data)
         }),
+    update: (id: string, data: Record<string, unknown>) =>
+        request<import('@expense/shared').Group>(`/groups/${id}`, {
+            method: 'PATCH',
+            body: JSON.stringify(data)
+        }),
     delete: (id: string) =>
         request<{ deleted: boolean }>(`/groups/${id}`, { method: 'DELETE' }),
     balances: (id: string) =>
@@ -111,7 +125,7 @@ export const membershipsApi = {
         request<import('@expense/shared').Membership[]>(
             `/memberships?groupId=${groupId}`
         ),
-    add: (groupId: string, data: { userId: string; role?: string }) =>
+    add: (groupId: string, data: { email: string; role?: string }) =>
         request<import('@expense/shared').Membership>(
             `/memberships?groupId=${groupId}`,
             {
@@ -119,6 +133,11 @@ export const membershipsApi = {
                 body: JSON.stringify(data)
             }
         ),
+    update: (id: string, data: { role?: string }) =>
+        request<import('@expense/shared').Membership>(`/memberships/${id}`, {
+            method: 'PATCH',
+            body: JSON.stringify(data)
+        }),
     remove: (id: string) =>
         request<{ deleted: boolean }>(`/memberships/${id}`, {
             method: 'DELETE'
@@ -134,6 +153,8 @@ export const settlementsApi = {
             `/settlements${qs}`
         );
     },
+    get: (id: string) =>
+        request<import('@expense/shared').Settlement>(`/settlements/${id}`),
     create: (data: {
         toUserId: string;
         amount: number;
@@ -223,6 +244,15 @@ export const companyApi = {
     summary: () => request<CompanySummary>('/groups/company-summary')
 };
 
+// ─── Users ─────────────────────────────────────────────────────
+
+export const usersApi = {
+    search: (q: string) =>
+        request<{ id: string; name: string; email: string }[]>(
+            `/users/search?q=${encodeURIComponent(q)}`
+        )
+};
+
 // ─── Uploads ─────────────────────────────────────────────────────
 
 export const uploadsApi = {
@@ -246,5 +276,13 @@ export const splitsApi = {
         request<import('@expense/shared').Split[]>('/splits', {
             method: 'POST',
             body: JSON.stringify(data)
+        }),
+    list: (expenseId: string) =>
+        request<import('@expense/shared').Split[]>(
+            `/splits?expenseId=${expenseId}`
+        ),
+    delete: (expenseId: string) =>
+        request<{ deleted: boolean }>(`/splits?expenseId=${expenseId}`, {
+            method: 'DELETE'
         })
 };

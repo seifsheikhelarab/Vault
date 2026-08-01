@@ -45,6 +45,10 @@ export interface Membership {
   userId: string;
   role: "admin" | "member";
   createdAt: string;
+  user?: {
+    name: string;
+    email: string;
+  };
 }
 
 export interface Settlement {

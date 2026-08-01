@@ -1,7 +1,11 @@
-import { eq, and, desc, inArray } from 'drizzle-orm';
+import { eq, and, desc, inArray, type SQL } from 'drizzle-orm';
 import { db } from '../../lib/db';
 import { claims, expenses, groups, memberships } from '../../lib/db/schema';
-import type { CreateClaimInput, ClaimQueryInput, RejectClaimInput } from './claim.schema';
+import type {
+    CreateClaimInput,
+    ClaimQueryInput,
+    RejectClaimInput
+} from './claim.schema';
 
 export class ClaimService {
     async create(userId: string, data: CreateClaimInput) {
@@ -27,13 +31,18 @@ export class ClaimService {
     }
 
     async list(userId: string, query: ClaimQueryInput) {
-        let allowedGroupIds: string[] | null = null;
+        let allowedGroupIds: string[];
 
         if (query.groupId) {
             const [membership] = await db
                 .select()
                 .from(memberships)
-                .where(and(eq(memberships.groupId, query.groupId), eq(memberships.userId, userId)));
+                .where(
+                    and(
+                        eq(memberships.groupId, query.groupId),
+                        eq(memberships.userId, userId)
+                    )
+                );
             if (!membership) return { error: 'FORBIDDEN' as const };
             allowedGroupIds = [query.groupId];
         } else {
@@ -41,15 +50,23 @@ export class ClaimService {
                 .select({ id: groups.id })
                 .from(groups)
                 .innerJoin(memberships, eq(memberships.groupId, groups.id))
-                .where(and(eq(groups.kind, 'department'), eq(memberships.userId, userId)));
+                .where(
+                    and(
+                        eq(groups.kind, 'department'),
+                        eq(memberships.userId, userId)
+                    )
+                );
             allowedGroupIds = userGroups.map((g) => g.id);
         }
 
         if (allowedGroupIds.length === 0) return [];
 
-        let expenseFilter = inArray(expenses.groupId, allowedGroupIds) as any;
+        let expenseFilter: SQL<unknown> = inArray(expenses.groupId, allowedGroupIds);
         if (query.userId) {
-            expenseFilter = and(expenseFilter, eq(expenses.userId, query.userId)) as any;
+            expenseFilter = and(
+                expenseFilter,
+                eq(expenses.userId, query.userId)
+            ) as SQL<unknown>;
         }
 
         const groupExpenses = await db
@@ -97,7 +114,11 @@ export class ClaimService {
     async approve(userId: string, id: string) {
         const [cl] = await db
             .update(claims)
-            .set({ status: 'approved', reviewerId: userId, reviewedAt: new Date() })
+            .set({
+                status: 'approved',
+                reviewerId: userId,
+                reviewedAt: new Date()
+            })
             .where(eq(claims.id, id))
             .returning();
         return cl ?? null;
@@ -120,7 +141,11 @@ export class ClaimService {
     async reimburse(userId: string, id: string) {
         const [cl] = await db
             .update(claims)
-            .set({ status: 'reimbursed', reviewerId: userId, reviewedAt: new Date() })
+            .set({
+                status: 'reimbursed',
+                reviewerId: userId,
+                reviewedAt: new Date()
+            })
             .where(eq(claims.id, id))
             .returning();
         return cl ?? null;

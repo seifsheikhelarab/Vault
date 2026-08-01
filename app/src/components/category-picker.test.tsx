@@ -39,19 +39,17 @@ describe('CategoryPicker', () => {
 
     it('shows a loading spinner while categories are pending', () => {
         mockCategories([], true);
-        render(
-            <CategoryPicker selectedId="" onSelect={vi.fn()} />,
-            { wrapper }
-        );
+        render(<CategoryPicker selectedId="" onSelect={vi.fn()} />, {
+            wrapper
+        });
         expect(screen.getByText('Loading...')).toBeDefined();
     });
 
     it('shows empty state when no categories exist', () => {
         mockCategories([]);
-        render(
-            <CategoryPicker selectedId="" onSelect={vi.fn()} />,
-            { wrapper }
-        );
+        render(<CategoryPicker selectedId="" onSelect={vi.fn()} />, {
+            wrapper
+        });
         expect(screen.getByText('No categories yet')).toBeDefined();
     });
 
@@ -62,10 +60,9 @@ describe('CategoryPicker', () => {
             { id: '3', name: 'Rent', icon: '🏠' }
         ];
         mockCategories(cats);
-        render(
-            <CategoryPicker selectedId="" onSelect={vi.fn()} max={3} />,
-            { wrapper }
-        );
+        render(<CategoryPicker selectedId="" onSelect={vi.fn()} max={3} />, {
+            wrapper
+        });
 
         expect(screen.getByText('Food')).toBeDefined();
         expect(screen.getByText('Travel')).toBeDefined();
@@ -79,12 +76,11 @@ describe('CategoryPicker', () => {
             icon: '📦'
         }));
         mockCategories(cats);
-        render(
-            <CategoryPicker selectedId="" onSelect={vi.fn()} max={6} />,
-            { wrapper }
-        );
+        render(<CategoryPicker selectedId="" onSelect={vi.fn()} max={6} />, {
+            wrapper
+        });
 
-        expect(screen.getByText('+2 more')).toBeDefined();
+        expect(screen.getByText('2 more')).toBeDefined();
     });
 
     it('highlights the selected category with coral styling', () => {
@@ -93,10 +89,9 @@ describe('CategoryPicker', () => {
             { id: '2', name: 'Travel', icon: '✈️' }
         ];
         mockCategories(cats);
-        render(
-            <CategoryPicker selectedId="2" onSelect={vi.fn()} />,
-            { wrapper }
-        );
+        render(<CategoryPicker selectedId="2" onSelect={vi.fn()} />, {
+            wrapper
+        });
 
         const travelBtn = screen.getByText('Travel').closest('button')!;
         expect(travelBtn.className).toContain('border-coral');
@@ -111,14 +106,11 @@ describe('CategoryPicker', () => {
 
     it('calls onSelect with the category id when clicked', () => {
         const onSelect = vi.fn();
-        const cats = [
-            { id: 'abc-123', name: 'Food', icon: '🍔' }
-        ];
+        const cats = [{ id: 'abc-123', name: 'Food', icon: '🍔' }];
         mockCategories(cats);
-        render(
-            <CategoryPicker selectedId="" onSelect={onSelect} />,
-            { wrapper }
-        );
+        render(<CategoryPicker selectedId="" onSelect={onSelect} />, {
+            wrapper
+        });
 
         fireEvent.click(screen.getByText('Food'));
         expect(onSelect).toHaveBeenCalledWith('abc-123');
@@ -127,7 +119,7 @@ describe('CategoryPicker', () => {
     it('shows a default folder icon when category has no icon', () => {
         const cats = [{ id: '1', name: 'Misc' }];
         mockCategories(cats);
-        const { container } = render(
+        render(
             <CategoryPicker selectedId="" onSelect={vi.fn()} />,
             { wrapper }
         );

@@ -1,7 +1,10 @@
 import { eq, and, desc } from 'drizzle-orm';
 import { db } from '../../lib/db';
 import { settlements } from '../../lib/db/schema';
-import type { CreateSettlementInput, SettlementQueryInput } from './settlement.schema';
+import type {
+    CreateSettlementInput,
+    SettlementQueryInput
+} from './settlement.schema';
 
 export class SettlementService {
     async create(userId: string, data: CreateSettlementInput) {

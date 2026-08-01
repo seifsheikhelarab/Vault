@@ -1,4 +1,4 @@
-import { createFileRoute, Link, redirect } from '@tanstack/react-router';
+import { createFileRoute, Link, Outlet, redirect, useLocation } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { useGroups } from '../lib/hooks';
 import { authClient } from '../lib/auth-client';
@@ -14,6 +14,9 @@ export const Route = createFileRoute('/groups')({
 });
 
 function Groups() {
+    const location = useLocation();
+    const isChildActive = location.pathname !== '/groups';
+
     const [revealed, setRevealed] = useState(false);
     const [showCreateDialog, setShowCreateDialog] = useState(false);
     useEffect(() => {
@@ -21,6 +24,10 @@ function Groups() {
     }, []);
 
     const { data: groups = [], isLoading } = useGroups();
+
+    if (isChildActive) {
+        return <Outlet />;
+    }
 
     return (
         <div

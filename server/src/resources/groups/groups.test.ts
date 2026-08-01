@@ -9,6 +9,11 @@ import { db } from '../../lib/db';
 import { memberships } from '../../lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 
+/** JSON shape of a group from GET /api/groups */
+interface GroupResponse {
+    name: string;
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────
 
 /**
@@ -90,7 +95,7 @@ describe('Groups API', () => {
             const body = await res.json();
             expect(body.success).toBe(true);
             expect(Array.isArray(body.data)).toBe(true);
-            expect(body.data.some((g: any) => g.name === 'My Group')).toBe(
+            expect(body.data.some((g: GroupResponse) => g.name === 'My Group')).toBe(
                 true
             );
         });

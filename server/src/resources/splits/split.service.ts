@@ -16,7 +16,10 @@ export class SplitService {
 
         const total = data.splits.reduce((sum, s) => sum + s.amount, 0);
         if (Math.abs(total - Number(expense.amount)) > 0.01) {
-            return { error: 'BAD_REQUEST' as const, message: 'Splits must equal expense amount' };
+            return {
+                error: 'BAD_REQUEST' as const,
+                message: 'Splits must equal expense amount'
+            };
         }
 
         const rows = data.splits.map((s) => ({

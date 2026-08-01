@@ -13,7 +13,8 @@ class LocalStorage implements StorageProvider {
 
     constructor() {
         this.baseUrl =
-            process.env.APP_URL ?? process.env.BETTER_AUTH_URL ??
+            process.env.APP_URL ??
+            process.env.BETTER_AUTH_URL ??
             'http://localhost:3001';
         this.uploadDir = process.env.LOCAL_UPLOAD_DIR ?? './uploads';
     }

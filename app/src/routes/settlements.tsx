@@ -1,8 +1,8 @@
-import { createFileRoute, Link, redirect } from '@tanstack/react-router';
+import { createFileRoute, redirect } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { useSettlements } from '../lib/hooks';
 import { authClient } from '../lib/auth-client';
-import { Button, EmptyState } from '../components/shared';
+import { EmptyState } from '../components/shared';
 
 export const Route = createFileRoute('/settlements')({
     beforeLoad: async () => {

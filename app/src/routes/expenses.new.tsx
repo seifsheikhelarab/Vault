@@ -226,8 +226,8 @@ function NewExpense() {
                     }),
                 1400
             );
-        } catch (err: any) {
-            setErrors({ submit: err?.message ?? 'Failed to create expense' });
+        } catch (err: unknown) {
+            setErrors({ submit: err instanceof Error ? err.message : 'Failed to create expense' });
             setSubmitting(false);
         }
     };
@@ -357,7 +357,7 @@ function NewExpense() {
                     <label className="block text-sm font-semibold text-text-primary mb-2">
                         Type
                     </label>
-                    <div className="flex gap-2 p-1 bg-cream/60 rounded-[10px]">
+                    <div className="flex gap-2 p-1 bg-cream/60 dark:bg-white/[0.06] rounded-[10px]">
                         {(['personal', 'group', 'company'] as const).map(
                             (opt) => (
                                 <button
@@ -367,7 +367,7 @@ function NewExpense() {
                                     data-cuelume-toggle
                                     className={`flex-1 py-2.5 px-4 rounded-[8px] text-sm font-medium transition-colors duration-150 ${
                                         scope === opt
-                                            ? 'bg-white text-text-primary shadow-warm-sm'
+                                            ? 'bg-white dark:bg-[#2a2a2a] text-text-primary shadow-warm-sm'
                                             : 'text-text-tertiary hover:text-text-secondary'
                                     }`}
                                 >
@@ -606,7 +606,7 @@ function NewExpense() {
                             </label>
 
                             {/* Split Type Tabs */}
-                            <div className="flex gap-1.5 p-1 bg-cream/60 rounded-[8px] mb-4">
+                            <div className="flex gap-1.5 p-1 bg-cream/60 dark:bg-white/[0.06] rounded-[8px] mb-4">
                                 {[
                                     {
                                         value: 'even' as const,
@@ -695,7 +695,7 @@ function NewExpense() {
                                         }}
                                         className={`flex-1 py-2 px-2 rounded-[6px] text-xs font-medium transition-colors duration-150 ${
                                             splitType === opt.value
-                                                ? 'bg-white text-text-primary shadow-warm-sm'
+                                                ? 'bg-white dark:bg-[#2a2a2a] text-text-primary shadow-warm-sm'
                                                 : 'text-text-tertiary hover:text-text-secondary'
                                         }`}
                                     >
@@ -706,7 +706,7 @@ function NewExpense() {
 
                             {/* Member Rows */}
                             <div className="space-y-2">
-                                {splitMembers.map((m, i) => {
+                                {splitMembers.map((m, _) => {
                                     const isYou = m.userId === currentUserId;
                                     const displayName = isYou
                                         ? 'You'

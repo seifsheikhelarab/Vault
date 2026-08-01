@@ -6,8 +6,9 @@ import {
     updateExpenseSchema,
     expenseQuerySchema
 } from './expense.schema';
+import type { AppEnv } from '../../lib/middleware';
 
-const expense = new Hono();
+const expense = new Hono<AppEnv>();
 const controller = new ExpenseController();
 
 expense.post('/', zValidator('json', createExpenseSchema), (c) =>

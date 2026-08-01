@@ -11,7 +11,12 @@ vi.mock('../lib/hooks', () => ({
     useUploadReceipt: vi.fn()
 }));
 
-import { useCreateExpense, useUpdateExpense, useCategories, useUploadReceipt } from '../lib/hooks';
+import {
+    useCreateExpense,
+    useUpdateExpense,
+    useCategories,
+    useUploadReceipt
+} from '../lib/hooks';
 
 const mockUseCreateExpense = vi.mocked(useCreateExpense);
 const mockUseUpdateExpense = vi.mocked(useUpdateExpense);
@@ -25,9 +30,13 @@ function wrapper({ children }: { children: React.ReactNode }) {
     return <QueryClientProvider client={qc}>{children}</QueryClientProvider>;
 }
 
-function mockHooks(overrides: { createPending?: boolean; updatePending?: boolean } = {}) {
+function mockHooks(
+    overrides: { createPending?: boolean; updatePending?: boolean } = {}
+) {
     mockUseCreateExpense.mockReturnValue({
-        mutateAsync: vi.fn().mockResolvedValue({ id: 'exp-1', amount: '42.50' }),
+        mutateAsync: vi
+            .fn()
+            .mockResolvedValue({ id: 'exp-1', amount: '42.50' }),
         isPending: overrides.createPending ?? false,
         isError: false,
         error: null,
@@ -39,7 +48,9 @@ function mockHooks(overrides: { createPending?: boolean; updatePending?: boolean
     } as any);
 
     mockUseUpdateExpense.mockReturnValue({
-        mutateAsync: vi.fn().mockResolvedValue({ id: 'exp-1', amount: '42.50' }),
+        mutateAsync: vi
+            .fn()
+            .mockResolvedValue({ id: 'exp-1', amount: '42.50' }),
         isPending: overrides.updatePending ?? false,
         isError: false,
         error: null,
@@ -62,7 +73,9 @@ function mockHooks(overrides: { createPending?: boolean; updatePending?: boolean
     } as any);
 
     mockUseUploadReceipt.mockReturnValue({
-        mutateAsync: vi.fn().mockResolvedValue({ url: 'https://example.com/r.jpg' }),
+        mutateAsync: vi
+            .fn()
+            .mockResolvedValue({ url: 'https://example.com/r.jpg' }),
         isPending: false,
         isError: false,
         error: null,
@@ -97,12 +110,11 @@ describe('AddExpenseDialog', () => {
     });
 
     it('renders the dialog when open is true', () => {
-        render(
-            <AddExpenseDialog open={true} onClose={vi.fn()} />,
-            { wrapper }
-        );
+        render(<AddExpenseDialog open={true} onClose={vi.fn()} />, { wrapper });
         // Use heading role to avoid matching the submit button text
-        expect(screen.getByRole('heading', { name: /add expense/i })).toBeDefined();
+        expect(
+            screen.getByRole('heading', { name: /add expense/i })
+        ).toBeDefined();
     });
 
     it('returns null when open is false', () => {
@@ -128,23 +140,28 @@ describe('AddExpenseDialog', () => {
         };
 
         render(
-            <AddExpenseDialog open={true} onClose={vi.fn()} expense={expense as any} />,
+            <AddExpenseDialog
+                open={true}
+                onClose={vi.fn()}
+                expense={expense as any}
+            />,
             { wrapper }
         );
 
-        expect(screen.getByRole('heading', { name: /edit expense/i })).toBeDefined();
+        expect(
+            screen.getByRole('heading', { name: /edit expense/i })
+        ).toBeDefined();
 
         await waitFor(() => {
-            const amountInput = screen.getByPlaceholderText('0.00') as HTMLInputElement;
+            const amountInput = screen.getByPlaceholderText(
+                '0.00'
+            ) as HTMLInputElement;
             expect(amountInput.value).toBe('99.99');
         });
     });
 
     it('shows validation error when submitting with empty amount', async () => {
-        render(
-            <AddExpenseDialog open={true} onClose={vi.fn()} />,
-            { wrapper }
-        );
+        render(<AddExpenseDialog open={true} onClose={vi.fn()} />, { wrapper });
         // Submit the form directly (clicking the submit button works since
         // @tanstack/react-form handles it even without fill)
         const submitBtn = screen.getByRole('button', { name: 'Add Expense' });
@@ -156,16 +173,14 @@ describe('AddExpenseDialog', () => {
 
     it('calls createExpense on valid form submit', async () => {
         const onClose = vi.fn();
-        render(
-            <AddExpenseDialog open={true} onClose={onClose} />,
-            { wrapper }
-        );
+        render(<AddExpenseDialog open={true} onClose={onClose} />, { wrapper });
 
         await fillValidForm();
         const submitBtn = screen.getByRole('button', { name: 'Add Expense' });
         fireEvent.click(submitBtn);
 
-        const mutateAsync = mockUseCreateExpense.mock.results[0]?.value?.mutateAsync;
+        const mutateAsync =
+            mockUseCreateExpense.mock.results[0]?.value?.mutateAsync;
         await waitFor(() => {
             expect(mutateAsync).toHaveBeenCalled();
         });
@@ -191,12 +206,18 @@ describe('AddExpenseDialog', () => {
         };
 
         render(
-            <AddExpenseDialog open={true} onClose={vi.fn()} expense={expense as any} />,
+            <AddExpenseDialog
+                open={true}
+                onClose={vi.fn()}
+                expense={expense as any}
+            />,
             { wrapper }
         );
 
         await waitFor(() => {
-            const descInput = screen.getByPlaceholderText('What was this for?') as HTMLInputElement;
+            const descInput = screen.getByPlaceholderText(
+                'What was this for?'
+            ) as HTMLInputElement;
             expect(descInput.value).toBe('Old description');
         });
 
@@ -207,19 +228,19 @@ describe('AddExpenseDialog', () => {
         const saveBtn = screen.getByRole('button', { name: 'Save Changes' });
         fireEvent.click(saveBtn);
 
-        const mutateAsync = mockUseUpdateExpense.mock.results[0]?.value?.mutateAsync;
+        const mutateAsync =
+            mockUseUpdateExpense.mock.results[0]?.value?.mutateAsync;
         await waitFor(() => {
             expect(mutateAsync).toHaveBeenCalled();
         });
         expect(mutateAsync.mock.calls[0][0].id).toBe('exp-2');
-        expect(mutateAsync.mock.calls[0][0].description).toBe('Updated description');
+        expect(mutateAsync.mock.calls[0][0].description).toBe(
+            'Updated description'
+        );
     });
 
     it('shows the success check animation after submit', async () => {
-        render(
-            <AddExpenseDialog open={true} onClose={vi.fn()} />,
-            { wrapper }
-        );
+        render(<AddExpenseDialog open={true} onClose={vi.fn()} />, { wrapper });
 
         await fillValidForm();
         const submitBtn = screen.getByRole('button', { name: 'Add Expense' });
@@ -230,10 +251,7 @@ describe('AddExpenseDialog', () => {
 
     it('closes when Escape is pressed', () => {
         const onClose = vi.fn();
-        render(
-            <AddExpenseDialog open={true} onClose={onClose} />,
-            { wrapper }
-        );
+        render(<AddExpenseDialog open={true} onClose={onClose} />, { wrapper });
 
         fireEvent.keyDown(window, { key: 'Escape' });
         expect(onClose).toHaveBeenCalled();
@@ -241,30 +259,23 @@ describe('AddExpenseDialog', () => {
 
     it('does not close on Escape when not open', () => {
         const onClose = vi.fn();
-        render(
-            <AddExpenseDialog open={false} onClose={onClose} />,
-            { wrapper }
-        );
+        render(<AddExpenseDialog open={false} onClose={onClose} />, {
+            wrapper
+        });
         fireEvent.keyDown(window, { key: 'Escape' });
         expect(onClose).not.toHaveBeenCalled();
     });
 
     it('calls onClose when Cancel button is clicked', () => {
         const onClose = vi.fn();
-        render(
-            <AddExpenseDialog open={true} onClose={onClose} />,
-            { wrapper }
-        );
+        render(<AddExpenseDialog open={true} onClose={onClose} />, { wrapper });
         fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
         expect(onClose).toHaveBeenCalled();
     });
 
     it('closes on backdrop click', () => {
         const onClose = vi.fn();
-        render(
-            <AddExpenseDialog open={true} onClose={onClose} />,
-            { wrapper }
-        );
+        render(<AddExpenseDialog open={true} onClose={onClose} />, { wrapper });
         // Backdrop is the div with the fadeIn animation style
         const backdrop = document.querySelector('[style*="fadeIn"]')!;
         fireEvent.click(backdrop);
@@ -279,10 +290,7 @@ describe('AddExpenseDialog', () => {
             status: 'idle'
         } as any);
 
-        render(
-            <AddExpenseDialog open={true} onClose={vi.fn()} />,
-            { wrapper }
-        );
+        render(<AddExpenseDialog open={true} onClose={vi.fn()} />, { wrapper });
 
         await fillValidForm();
         const submitBtn = screen.getByRole('button', { name: 'Add Expense' });
@@ -306,20 +314,23 @@ describe('AddExpenseDialog', () => {
         };
 
         render(
-            <AddExpenseDialog open={true} onClose={vi.fn()} expense={expense as any} />,
+            <AddExpenseDialog
+                open={true}
+                onClose={vi.fn()}
+                expense={expense as any}
+            />,
             { wrapper }
         );
 
         await waitFor(() => {
-            expect(screen.getByRole('button', { name: 'Save Changes' })).toBeDefined();
+            expect(
+                screen.getByRole('button', { name: 'Save Changes' })
+            ).toBeDefined();
         });
     });
 
     it('shows the "Open full form" link in create mode', () => {
-        render(
-            <AddExpenseDialog open={true} onClose={vi.fn()} />,
-            { wrapper }
-        );
+        render(<AddExpenseDialog open={true} onClose={vi.fn()} />, { wrapper });
         expect(screen.getByText('Open full form')).toBeDefined();
     });
 
@@ -338,7 +349,11 @@ describe('AddExpenseDialog', () => {
         };
 
         render(
-            <AddExpenseDialog open={true} onClose={vi.fn()} expense={expense as any} />,
+            <AddExpenseDialog
+                open={true}
+                onClose={vi.fn()}
+                expense={expense as any}
+            />,
             { wrapper }
         );
 

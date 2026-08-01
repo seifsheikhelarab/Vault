@@ -84,10 +84,11 @@ export function AddExpenseDialog({
                     onSuccess?.();
                     onClose();
                 }, 900);
-            } catch (err: any) {
+            } catch (err: unknown) {
                 setSubmitError(
-                    err?.message ??
-                        `Failed to ${isEditing ? 'update' : 'create'} expense`
+                    err instanceof Error 
+                        ? err.message
+                        : `Failed to ${isEditing ? 'update' : 'create'} expense`
                 );
             }
         }

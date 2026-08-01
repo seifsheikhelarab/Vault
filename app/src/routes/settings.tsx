@@ -3,8 +3,12 @@ import { useEffect, useState } from 'react';
 import { useSession } from '../lib/auth-client';
 import {
     useCategories,
+    useCreateCategory,
+    useUpdateCategory,
+    useDeleteCategory,
     useBudgets,
     useCreateBudget,
+    useUpdateBudget,
     useDeleteBudget,
     useExpenses,
     useGroups
@@ -37,7 +41,17 @@ function Settings() {
     );
 
     const { theme, toggle: toggleTheme } = useTheme();
-    const [deletingBudget, setDeletingBudget] = useState<string | null>(null);
+
+    // Category CRUD state
+    const [showCategoryForm, setShowCategoryForm] = useState(false);
+    const [newCategoryName, setNewCategoryName] = useState('');
+    const [editingCategory, setEditingCategory] = useState<string | null>(null);
+    const [editCategoryName, setEditCategoryName] = useState('');
+    const [deletingCategory, setDeletingCategory] = useState<string | null>(null);
+
+    // Delete account state
+    const [showDeleteAccount, setShowDeleteAccount] = useState(false);
+    const [deletingAccount, setDeletingAccount] = useState(false);
 
     useEffect(() => {
         requestAnimationFrame(() => setRevealed(true));
@@ -50,8 +64,20 @@ function Settings() {
     const { data: expenseData } = useExpenses({ pageSize: 200 });
     const expenses = expenseData?.items ?? [];
 
+    const createCategory = useCreateCategory();
+    const updateCategory = useUpdateCategory();
+    const deleteCategory = useDeleteCategory();
+
     const createBudget = useCreateBudget();
+    const updateBudget = useUpdateBudget();
     const deleteBudget = useDeleteBudget();
+
+    // Budget inline edit state
+    const [editingBudget, setEditingBudget] = useState<string | null>(null);
+    const [editBudgetAmount, setEditBudgetAmount] = useState('');
+    const [editBudgetPeriod, setEditBudgetPeriod] = useState<
+        'monthly' | 'weekly' | 'yearly'
+    >('monthly');
 
     const user = session?.user;
 
@@ -140,31 +166,214 @@ function Settings() {
                     transition: 'all 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.1s'
                 }}
             >
-                <h2 className="text-base font-semibold text-text-primary mb-2">
-                    Categories
-                </h2>
-                <p className="text-sm text-text-secondary mb-4">
-                    Your expense categories.
-                </p>
+                <div className="flex items-center justify-between mb-4">
+                    <div>
+                        <h2 className="text-base font-semibold text-text-primary mb-1">
+                            Categories
+                        </h2>
+                        <p className="text-sm text-text-secondary">
+                            Manage your custom expense categories.
+                        </p>
+                    </div>
+                    <Button
+                        onClick={() => {
+                            setShowCategoryForm(true);
+                            setNewCategoryName('');
+                        }}
+                        size="sm"
+                        icon={
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                                <line x1="12" y1="5" x2="12" y2="19" />
+                                <line x1="5" y1="12" x2="19" y2="12" />
+                            </svg>
+                        }
+                    >
+                        Add Category
+                    </Button>
+                </div>
+
+                {/* New category form */}
+                {showCategoryForm && (
+                    <form
+                        onSubmit={(e) => {
+                            e.preventDefault();
+                            if (!newCategoryName.trim()) return;
+                            createCategory.mutate(
+                                { name: newCategoryName.trim() },
+                                {
+                                    onSuccess: () => {
+                                        setShowCategoryForm(false);
+                                        setNewCategoryName('');
+                                    }
+                                }
+                            );
+                        }}
+                        className="mb-4 flex items-center gap-2 p-3 bg-warm-white rounded-[10px] border border-border-light"
+                    >
+                        <input
+                            type="text"
+                            value={newCategoryName}
+                            onChange={(e) => setNewCategoryName(e.target.value)}
+                            placeholder="Category name"
+                            autoFocus
+                            className="flex-1 px-3 py-2 bg-white border border-border rounded-[8px] text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-coral/20 focus:border-coral transition-colors duration-150"
+                        />
+                        <button
+                            type="submit"
+                            disabled={!newCategoryName.trim() || createCategory.isPending}
+                            className="px-3 py-2 bg-coral text-white text-sm font-medium rounded-[8px] hover:bg-coral-dark active:scale-[0.98] transition-all duration-150 disabled:opacity-50 shrink-0"
+                            data-cuelume-press
+                        >
+                            {createCategory.isPending ? 'Adding...' : 'Add'}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setShowCategoryForm(false);
+                                setNewCategoryName('');
+                            }}
+                            className="p-2 text-text-tertiary hover:text-text-primary transition-colors shrink-0"
+                            data-cuelume-press
+                        >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                                <line x1="18" y1="6" x2="6" y2="18" />
+                                <line x1="6" y1="6" x2="18" y2="18" />
+                            </svg>
+                        </button>
+                    </form>
+                )}
+
+                {/* Category list */}
                 {categories.length === 0 ? (
                     <p className="text-sm text-text-tertiary">
-                        No categories yet. They'll be created with your first
-                        expense.
+                        No categories yet. Add one above.
                     </p>
                 ) : (
-                    <div className="flex flex-wrap gap-2">
+                    <div className="space-y-1">
                         {categories.map((cat) => (
-                            <span
+                            <div
                                 key={cat.id}
-                                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm font-medium bg-cream text-text-secondary hover:bg-coral-light hover:text-coral transition-colors duration-150 cursor-default"
+                                className="flex items-center justify-between py-2.5 px-3 rounded-[8px] hover:bg-cream/40 transition-colors group"
                             >
-                                {cat.icon && <span>{cat.icon}</span>}
-                                {cat.name}
-                            </span>
+                                {editingCategory === cat.id ? (
+                                    <form
+                                        onSubmit={(e) => {
+                                            e.preventDefault();
+                                            if (!editCategoryName.trim()) return;
+                                            updateCategory.mutate(
+                                                { id: cat.id, name: editCategoryName.trim() },
+                                                {
+                                                    onSuccess: () => setEditingCategory(null)
+                                                }
+                                            );
+                                        }}
+                                        className="flex items-center gap-2 flex-1"
+                                    >
+                                        <input
+                                            type="text"
+                                            value={editCategoryName}
+                                            onChange={(e) => setEditCategoryName(e.target.value)}
+                                            autoFocus
+                                            className="flex-1 px-2 py-1 bg-white border border-border rounded-[6px] text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-coral/20 focus:border-coral"
+                                        />
+                                        <button
+                                            type="submit"
+                                            disabled={!editCategoryName.trim() || updateCategory.isPending}
+                                            className="text-xs font-medium text-coral hover:text-coral-dark transition-colors shrink-0"
+                                        >
+                                            Save
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setEditingCategory(null)}
+                                            className="text-xs text-text-tertiary hover:text-text-secondary transition-colors shrink-0"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </form>
+                                ) : (
+                                    <>
+                                        <span className="text-sm font-medium text-text-primary">
+                                            {cat.name}
+                                        </span>
+                                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <IconButton
+                                                onClick={() => {
+                                                    setEditingCategory(cat.id);
+                                                    setEditCategoryName(cat.name);
+                                                }}
+                                                ariaLabel="Rename category"
+                                            >
+                                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                                </svg>
+                                            </IconButton>
+                                            <IconButton
+                                                onClick={() => setDeletingCategory(cat.id)}
+                                                ariaLabel="Delete category"
+                                            >
+                                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                                                    <polyline points="3 6 5 6 21 6" />
+                                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                                </svg>
+                                            </IconButton>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
                         ))}
                     </div>
                 )}
             </div>
+
+            {/* Delete category confirmation */}
+            {deletingCategory && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm"
+                    onClick={() => setDeletingCategory(null)}
+                >
+                    <div
+                        className="bg-surface rounded-[16px] shadow-warm-lg border border-border-light p-6 w-full max-w-sm mx-4"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="w-12 h-12 rounded-full bg-error/10 flex items-center justify-center mb-4 mx-auto">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FF3B30" strokeWidth="2" strokeLinecap="round">
+                                <circle cx="12" cy="12" r="10" />
+                                <line x1="12" y1="8" x2="12" y2="12" />
+                                <line x1="12" y1="16" x2="12.01" y2="16" />
+                            </svg>
+                        </div>
+                        <h3 className="text-base font-semibold text-text-primary text-center mb-2">
+                            Delete Category?
+                        </h3>
+                        <p className="text-sm text-text-secondary text-center mb-6 leading-relaxed">
+                            Expenses in this category will be unlinked but kept.
+                        </p>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setDeletingCategory(null)}
+                                data-cuelume-press
+                                className="flex-1 px-4 py-2.5 rounded-[10px] text-sm font-medium text-text-secondary border border-border-light hover:bg-cream/50 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={() => {
+                                    deleteCategory.mutate(deletingCategory, {
+                                        onSettled: () => setDeletingCategory(null)
+                                    });
+                                }}
+                                disabled={deleteCategory.isPending}
+                                data-cuelume-press
+                                className="flex-1 px-4 py-2.5 bg-error text-white text-sm font-medium rounded-[10px] hover:bg-error/80 active:scale-[0.98] transition-all duration-200 disabled:opacity-50"
+                            >
+                                {deleteCategory.isPending ? 'Deleting...' : 'Delete'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Budgets */}
             <div
@@ -314,7 +523,7 @@ function Settings() {
                                 <label className="block text-xs font-semibold text-text-secondary mb-1.5">
                                     Period
                                 </label>
-                                <div className="flex gap-1.5 p-1 bg-cream/60 rounded-[8px]">
+                                <div className="flex gap-1.5 p-1 bg-cream/60 dark:bg-white/[0.06] rounded-[8px]">
                                     {(
                                         ['monthly', 'weekly', 'yearly'] as const
                                     ).map((p) => (
@@ -325,7 +534,7 @@ function Settings() {
                                             data-cuelume-toggle
                                             className={`flex-1 py-1.5 px-2 rounded-[6px] text-xs font-medium transition-colors duration-150 ${
                                                 budgetPeriod === p
-                                                    ? 'bg-white text-text-primary shadow-warm-sm'
+                                                    ? 'bg-white dark:bg-[#2a2a2a] text-text-primary shadow-warm-sm'
                                                     : 'text-text-tertiary hover:text-text-secondary'
                                             }`}
                                         >
@@ -431,72 +640,199 @@ function Settings() {
                                     ? Math.min((spent / budgetAmt) * 100, 100)
                                     : 0;
                             const over90 = pct > 90;
-                            const isDeleting = deletingBudget === budget.id;
+                            const isEditing = editingBudget === budget.id;
 
                             return (
                                 <div key={budget.id} className="group">
-                                    <div className="flex items-center justify-between text-sm mb-1.5">
-                                        <div className="flex items-center gap-2">
-                                            <span className="font-medium text-text-primary">
+                                    {isEditing ? (
+                                        <form
+                                            onSubmit={(e) => {
+                                                e.preventDefault();
+                                                const newAmt =
+                                                    parseFloat(
+                                                        editBudgetAmount
+                                                    );
+                                                if (!editBudgetAmount || newAmt <= 0)
+                                                    return;
+                                                updateBudget.mutate(
+                                                    {
+                                                        id: budget.id,
+                                                        amount: newAmt,
+                                                        period:
+                                                            editBudgetPeriod
+                                                    },
+                                                    {
+                                                        onSuccess: () =>
+                                                            setEditingBudget(
+                                                                null
+                                                            )
+                                                    }
+                                                );
+                                            }}
+                                            className="flex items-center gap-3 text-sm mb-1.5"
+                                        >
+                                            <span className="font-medium text-text-primary shrink-0">
                                                 {catName}
                                             </span>
-                                            {deptName && (
-                                                <span className="text-[10px] font-medium text-text-tertiary bg-cream px-1.5 py-0.5 rounded-full">
-                                                    {deptName}
-                                                </span>
-                                            )}
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-text-secondary text-xs">
-                                                <span className="font-mono">
-                                                    ${spent.toFixed(0)}
-                                                </span>{' '}
-                                                /{' '}
-                                                <span className="font-mono">
-                                                    $
-                                                    {budgetAmt.toLocaleString()}
-                                                </span>{' '}
-                                                (
-                                                {budget.period === 'monthly'
-                                                    ? 'mo'
-                                                    : budget.period === 'weekly'
-                                                      ? 'wk'
-                                                      : 'yr'}
-                                                )
-                                            </span>
-                                            <IconButton
-                                                onClick={() => {
-                                                    setDeletingBudget(
-                                                        budget.id
-                                                    );
-                                                    deleteBudget.mutate(
-                                                        budget.id,
-                                                        {
-                                                            onSettled: () =>
-                                                                setDeletingBudget(
-                                                                    null
-                                                                )
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                min="0"
+                                                value={editBudgetAmount}
+                                                onChange={(e) =>
+                                                    setEditBudgetAmount(
+                                                        e.target.value
+                                                    )
+                                                }
+                                                autoFocus
+                                                className="w-20 px-2 py-1 bg-white border border-border rounded-[6px] text-sm font-mono text-text-primary focus:outline-none focus:ring-2 focus:ring-coral/20 focus:border-coral"
+                                            />
+                                            <div className="flex gap-1 p-0.5 bg-cream/60 dark:bg-white/[0.06] rounded-[6px]">
+                                                {(
+                                                    [
+                                                        'monthly',
+                                                        'weekly',
+                                                        'yearly'
+                                                    ] as const
+                                                ).map((p) => (
+                                                    <button
+                                                        key={p}
+                                                        type="button"
+                                                        onClick={() =>
+                                                            setEditBudgetPeriod(
+                                                                p
+                                                            )
                                                         }
-                                                    );
-                                                }}
-                                                disabled={isDeleting}
-                                                ariaLabel="Delete budget"
+                                                        data-cuelume-toggle
+                                                        className={`px-2 py-0.5 rounded-[4px] text-[10px] font-medium transition-colors duration-150 ${
+                                                            editBudgetPeriod ===
+                                                            p
+                                                                ? 'bg-white dark:bg-[#2a2a2a] text-text-primary shadow-warm-sm'
+                                                                : 'text-text-tertiary hover:text-text-secondary'
+                                                        }`}
+                                                    >
+                                                        {p === 'monthly'
+                                                            ? 'mo'
+                                                            : p === 'weekly'
+                                                              ? 'wk'
+                                                              : 'yr'}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            <button
+                                                type="submit"
+                                                disabled={
+                                                    updateBudget.isPending
+                                                }
+                                                className="text-xs font-medium text-coral hover:text-coral-dark transition-colors shrink-0"
                                             >
-                                                <svg
-                                                    width="14"
-                                                    height="14"
-                                                    viewBox="0 0 24 24"
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    strokeWidth="2"
-                                                    strokeLinecap="round"
-                                                >
-                                                    <polyline points="3 6 5 6 21 6" />
-                                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                                                </svg>
-                                            </IconButton>
+                                                Save
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    setEditingBudget(null)
+                                                }
+                                                className="text-xs text-text-tertiary hover:text-text-secondary transition-colors shrink-0"
+                                            >
+                                                Cancel
+                                            </button>
+                                        </form>
+                                    ) : (
+                                        <div className="flex items-center justify-between text-sm mb-1.5">
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-medium text-text-primary">
+                                                    {catName}
+                                                </span>
+                                                {deptName && (
+                                                    <span className="text-[10px] font-medium text-text-tertiary bg-cream px-1.5 py-0.5 rounded-full">
+                                                        {deptName}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-text-secondary text-xs">
+                                                    <span className="font-mono">
+                                                        $
+                                                        {spent.toFixed(0)}
+                                                    </span>{' '}
+                                                    /{' '}
+                                                    <span className="font-mono">
+                                                        $
+                                                        {budgetAmt.toLocaleString()}
+                                                    </span>{' '}
+                                                    (
+                                                    {budget.period ===
+                                                    'monthly'
+                                                        ? 'mo'
+                                                        : budget.period ===
+                                                            'weekly'
+                                                          ? 'wk'
+                                                          : 'yr'}
+                                                    )
+                                                </span>
+                                                <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <IconButton
+                                                        onClick={() => {
+                                                            setEditingBudget(
+                                                                budget.id
+                                                            );
+                                                            setEditBudgetAmount(
+                                                                String(
+                                                                    budgetAmt
+                                                                )
+                                                            );
+                                                            setEditBudgetPeriod(
+                                                                budget.period as
+                                                                    | 'monthly'
+                                                                    | 'weekly'
+                                                                    | 'yearly'
+                                                            );
+                                                        }}
+                                                        ariaLabel="Edit budget"
+                                                    >
+                                                        <svg
+                                                            width="13"
+                                                            height="13"
+                                                            viewBox="0 0 24 24"
+                                                            fill="none"
+                                                            stroke="currentColor"
+                                                            strokeWidth="2"
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                        >
+                                                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                                        </svg>
+                                                    </IconButton>
+                                                    <IconButton
+                                                        onClick={() =>
+                                                            deleteBudget.mutate(
+                                                                budget.id
+                                                            )
+                                                        }
+                                                        disabled={
+                                                            deleteBudget.isPending
+                                                        }
+                                                        ariaLabel="Delete budget"
+                                                    >
+                                                        <svg
+                                                            width="13"
+                                                            height="13"
+                                                            viewBox="0 0 24 24"
+                                                            fill="none"
+                                                            stroke="currentColor"
+                                                            strokeWidth="2"
+                                                            strokeLinecap="round"
+                                                        >
+                                                            <polyline points="3 6 5 6 21 6" />
+                                                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                                        </svg>
+                                                    </IconButton>
+                                                </div>
+                                            </div>
                                         </div>
-                                    </div>
+                                    )}
                                     <div className="h-2.5 bg-cream rounded-full overflow-hidden">
                                         <div
                                             className="h-full rounded-full transition-all duration-700 ease-out"
@@ -649,7 +985,76 @@ function Settings() {
                         </div>
                     </div>
                 </div>
+
+                <div className="mt-6 pt-4 border-t border-border-light">
+                    <button
+                        onClick={() => setShowDeleteAccount(true)}
+                        className="px-4 py-2 text-sm font-medium text-error border border-error/20 rounded-[10px] hover:bg-error/5 active:scale-[0.98] transition-all duration-150"
+                        data-cuelume-press
+                    >
+                        Delete Account
+                    </button>
+                    <p className="text-xs text-text-tertiary mt-2">
+                        Permanently delete your account and all associated
+                        data. This cannot be undone.
+                    </p>
+                </div>
             </div>
+
+            {/* Delete Account Confirmation */}
+            {showDeleteAccount && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm"
+                    onClick={() => !deletingAccount && setShowDeleteAccount(false)}
+                >
+                    <div
+                        className="bg-surface rounded-[16px] shadow-warm-lg border border-border-light p-6 w-full max-w-sm mx-4"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="w-12 h-12 rounded-full bg-error/10 flex items-center justify-center mb-4 mx-auto">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FF3B30" strokeWidth="2" strokeLinecap="round">
+                                <circle cx="12" cy="12" r="10" />
+                                <line x1="12" y1="8" x2="12" y2="12" />
+                                <line x1="12" y1="16" x2="12.01" y2="16" />
+                            </svg>
+                        </div>
+                        <h3 className="text-base font-semibold text-text-primary text-center mb-2">
+                            Delete Account?
+                        </h3>
+                        <p className="text-sm text-text-secondary text-center mb-6 leading-relaxed">
+                            This will permanently delete your account, all
+                            expenses, groups, and data. This action cannot be
+                            undone.
+                        </p>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setShowDeleteAccount(false)}
+                                disabled={deletingAccount}
+                                data-cuelume-press
+                                className="flex-1 px-4 py-2.5 rounded-[10px] text-sm font-medium text-text-secondary border border-border-light hover:bg-cream/50 transition-colors disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={async () => {
+                                    setDeletingAccount(true);
+                                    const { error } = await authClient.deleteUser();
+                                    if (error) {
+                                        setDeletingAccount(false);
+                                        return;
+                                    }
+                                    window.location.href = '/';
+                                }}
+                                disabled={deletingAccount}
+                                data-cuelume-press
+                                className="flex-1 px-4 py-2.5 bg-error text-white text-sm font-medium rounded-[10px] hover:bg-error/80 active:scale-[0.98] transition-all duration-200 disabled:opacity-50"
+                            >
+                                {deletingAccount ? 'Deleting...' : 'Delete Forever'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

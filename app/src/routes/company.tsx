@@ -1,4 +1,4 @@
-import { createFileRoute, Link, redirect } from '@tanstack/react-router';
+import { createFileRoute, Link, Outlet, redirect, useLocation } from '@tanstack/react-router';
 import { useEffect, useRef, useState } from 'react';
 import {
     useCompanySummary,
@@ -6,7 +6,9 @@ import {
     useCreateGroup,
     useDeleteGroup,
     useOrganizations,
-    useOrganizationMembers
+    useOrganizationMembers,
+    useRemoveOrgMember,
+    useUpdateMemberRole
 } from '../lib/hooks';
 import { authClient } from '../lib/auth-client';
 import type { CompanySummary, ClaimWithExpense } from '../lib/api';
@@ -57,6 +59,8 @@ function CompanyDashboard() {
     const { data: organizations = [] } = useOrganizations();
     const { data: orgMembers = [], isLoading: orgMembersLoading } =
         useOrganizationMembers(expandedOrg ?? undefined);
+    const removeOrgMember = useRemoveOrgMember();
+    const updateMemberRole = useUpdateMemberRole();
 
     const handleCreateDepartment = () => {
         if (!newDeptName.trim()) return;
@@ -83,6 +87,13 @@ function CompanyDashboard() {
 
     const isLoading = summaryLoading || claimsLoading;
 
+    const location = useLocation();
+    const isChildActive = location.pathname !== '/company';
+
+    if (isChildActive) {
+        return <Outlet />;
+    }
+
     if (isLoading) {
         return (
             <div className="space-y-6">
@@ -104,70 +115,10 @@ function CompanyDashboard() {
     }
 
     const hasDepartments = summary && summary.departments.length > 0;
-
-    if (!hasDepartments) {
-        return (
-            <div
-                className="space-y-6"
-                style={{
-                    opacity: revealed ? 1 : 0,
-                    transform: revealed ? 'none' : 'translateY(12px)',
-                    transition: 'all 0.5s cubic-bezier(0.22, 1, 0.36, 1)'
-                }}
-            >
-                <div className="t-stagger" ref={staggerRef}>
-                    <h1 className="text-xl font-semibold text-text-primary t-stagger-line">
-                        Company
-                    </h1>
-                    <p className="text-sm text-text-secondary mt-1 t-stagger-line t-stagger-line--2">
-                        Department budgets and expense claims
-                    </p>
-                </div>
-                <div
-                    style={{
-                        opacity: revealed ? 1 : 0,
-                        transition:
-                            'all 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.15s'
-                    }}
-                >
-                    <EmptyState
-                        icon={
-                            <svg
-                                width="28"
-                                height="28"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="1.5"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                className="text-coral"
-                            >
-                                <rect
-                                    x="2"
-                                    y="7"
-                                    width="20"
-                                    height="14"
-                                    rx="2"
-                                    ry="2"
-                                />
-                                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
-                            </svg>
-                        }
-                        title="No departments set up"
-                        description="Create a department group to manage budgets and expense claims for your team."
-                    />
-                    <div className="mt-4 flex justify-center">
-                        <Button onClick={() => setShowCreateGroupDialog(true)}>
-                            Create Department
-                        </Button>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    const { departments, totalBudget, totalSpent, pendingClaims } = summary!;
+    const departments = hasDepartments ? summary!.departments : [];
+    const totalBudget = hasDepartments ? summary!.totalBudget : 0;
+    const totalSpent = hasDepartments ? summary!.totalSpent : 0;
+    const pendingClaims = hasDepartments ? summary!.pendingClaims : 0;
     const remaining = totalBudget - totalSpent;
 
     const SUMMARY_CARDS = [
@@ -178,15 +129,60 @@ function CompanyDashboard() {
     ];
 
     return (
-        <div
-            className="space-y-8"
-            style={{
-                opacity: revealed ? 1 : 0,
-                transform: revealed ? 'none' : 'translateY(12px)',
-                transition: 'all 0.5s cubic-bezier(0.22, 1, 0.36, 1)'
-            }}
-        >
-            {/* Header */}
+        <>
+            {!hasDepartments ? (
+                /* ── Empty state ────────────────────────────── */
+                <div
+                    className="space-y-6"
+                    style={{
+                        opacity: revealed ? 1 : 0,
+                        transform: revealed ? 'none' : 'translateY(12px)',
+                        transition: 'all 0.5s cubic-bezier(0.22, 1, 0.36, 1)'
+                    }}
+                >
+                    <div className="t-stagger" ref={staggerRef}>
+                        <h1 className="text-xl font-semibold text-text-primary t-stagger-line">
+                            Company
+                        </h1>
+                        <p className="text-sm text-text-secondary mt-1 t-stagger-line t-stagger-line--2">
+                            Department budgets and expense claims
+                        </p>
+                    </div>
+                    <div
+                        style={{
+                            opacity: revealed ? 1 : 0,
+                            transition:
+                                'all 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.15s'
+                        }}
+                    >
+                        <EmptyState
+                            icon={
+                                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-coral">
+                                    <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+                                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+                                </svg>
+                            }
+                            title="No departments set up"
+                            description="Create a department group to manage budgets and expense claims for your team."
+                        />
+                        <div className="mt-4 flex justify-center">
+                            <Button onClick={() => setShowCreateGroupDialog(true)}>
+                                Create Department
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            ) : (
+                /* ── Dashboard ──────────────────────────────── */
+                <div
+                    className="space-y-8"
+                    style={{
+                        opacity: revealed ? 1 : 0,
+                        transform: revealed ? 'none' : 'translateY(12px)',
+                        transition: 'all 0.5s cubic-bezier(0.22, 1, 0.36, 1)'
+                    }}
+                >
+                    {/* Header */}
             <div className="flex items-center justify-between">
                 <div className="t-stagger" ref={staggerRef}>
                     <h1 className="text-xl font-semibold text-text-primary t-stagger-line">
@@ -449,7 +445,7 @@ function CompanyDashboard() {
                     </div>
                 ) : (
                     <div className="space-y-3">
-                        {organizations.map((org: any, i: number) => (
+                        {organizations.map((org: { id: string; name: string; slug?: string }, i: number) => (
                             <div
                                 key={org.id}
                                 className="p-4 rounded-[10px] hover:bg-cream/50 transition-colors duration-150 group"
@@ -601,7 +597,7 @@ function CompanyDashboard() {
                                         ) : (
                                             <div className="space-y-1.5">
                                                 {orgMembers.map(
-                                                    (member: any) => (
+                                                    (member) => (
                                                         <div
                                                             key={
                                                                 member.id ||
@@ -640,6 +636,41 @@ function CompanyDashboard() {
                                                             <span className="shrink-0 text-[10px] font-semibold text-text-tertiary bg-cream px-2 py-0.5 rounded-full capitalize">
                                                                 {member.role}
                                                             </span>
+                                                            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity ml-1">
+                                                                <button
+                                                                    onClick={() =>
+                                                                        updateMemberRole.mutate({
+                                                                            memberId: member.id ?? member.userId ?? '',
+                                                                            role: member.role === 'admin' ? 'member' : 'admin'
+                                                                        })
+                                                                    }
+                                                                    disabled={updateMemberRole.isPending}
+                                                                    className={`p-1 rounded-[4px] transition-colors ${updateMemberRole.isPending ? 'opacity-50' : 'text-text-tertiary hover:text-coral hover:bg-coral-light/30'}`}
+                                                                    title={`Change role to ${member.role === 'admin' ? 'member' : 'admin'}`}
+                                                                    data-cuelume-press
+                                                                >
+                                                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                                        <polyline points="16 3 21 8 8 21 3 21 3 16 16 3" />
+                                                                    </svg>
+                                                                </button>
+                                                                <button
+                                                                    onClick={() =>
+                                                                        removeOrgMember.mutate({
+                                                                            memberIdOrEmail: member.user?.email ?? member.id ?? member.userId ?? '',
+                                                                            organizationId: org.id
+                                                                        })
+                                                                    }
+                                                                    disabled={removeOrgMember.isPending}
+                                                                    className={`p-1 rounded-[4px] transition-colors ${removeOrgMember.isPending ? 'opacity-50' : 'text-text-tertiary hover:text-error hover:bg-error/10'}`}
+                                                                    title="Remove member"
+                                                                    data-cuelume-press
+                                                                >
+                                                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                                                                        <line x1="18" y1="6" x2="6" y2="18" />
+                                                                        <line x1="6" y1="6" x2="18" y2="18" />
+                                                                    </svg>
+                                                                </button>
+                                                            </div>
                                                         </div>
                                                     )
                                                 )}
@@ -677,7 +708,7 @@ function CompanyDashboard() {
                     <div className="space-y-3">
                         {recentClaims
                             .slice(0, 5)
-                            .map((claim: ClaimWithExpense, i: number) => (
+                            .map((claim: ClaimWithExpense, _: number) => (
                                 <div
                                     key={claim.id}
                                     className="p-4 rounded-[10px] hover:bg-cream/50 transition-colors duration-150"
@@ -710,7 +741,10 @@ function CompanyDashboard() {
                 </div>
             )}
 
-            {/* ─── Create Department Modal ─── */}
+                </div>
+            )}
+
+            {/* ─── Modals (always rendered) ──────────────────── */}
             {showCreateDept && (
                 <div
                     className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm"
@@ -776,15 +810,12 @@ function CompanyDashboard() {
                 </div>
             )}
 
-            {/* ─── Delete Confirmation Modal ─── */}
-            {/* Create Group Dialog */}
             <CreateGroupDialog
                 open={showCreateGroupDialog}
                 onClose={() => setShowCreateGroupDialog(false)}
                 kind="department"
             />
 
-            {/* Invite Member Dialog */}
             <InviteMemberDialog
                 open={!!showInviteDialog}
                 onClose={() => setShowInviteDialog(null)}
@@ -847,6 +878,6 @@ function CompanyDashboard() {
                     </div>
                 </div>
             )}
-        </div>
+        </>
     );
 }

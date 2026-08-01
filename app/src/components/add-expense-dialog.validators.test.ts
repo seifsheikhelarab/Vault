@@ -20,7 +20,9 @@ describe('AddExpenseDialog validators', () => {
         });
 
         it('returns an error for negative amounts', () => {
-            expect(validateAmount({ value: '-5' })).toBe('Enter a valid amount');
+            expect(validateAmount({ value: '-5' })).toBe(
+                'Enter a valid amount'
+            );
         });
 
         it('returns an error for empty string', () => {
@@ -28,7 +30,9 @@ describe('AddExpenseDialog validators', () => {
         });
 
         it('returns an error for non-numeric input', () => {
-            expect(validateAmount({ value: 'abc' })).toBe('Enter a valid amount');
+            expect(validateAmount({ value: 'abc' })).toBe(
+                'Enter a valid amount'
+            );
         });
 
         it('returns an error for whitespace-only input', () => {
@@ -75,9 +79,7 @@ describe('AddExpenseDialog validators', () => {
         });
 
         it('returns an error when no category is selected', () => {
-            expect(validateCategoryId({ value: '' })).toBe(
-                'Select a category'
-            );
+            expect(validateCategoryId({ value: '' })).toBe('Select a category');
         });
     });
 

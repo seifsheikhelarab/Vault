@@ -137,20 +137,47 @@ beforeAll(async () => {
 
 /**
  * Cleans up test data after all tests complete.
- * Expenses must be deleted before users because
- * expense.category_id → category.id is ON DELETE RESTRICT,
- * and user deletion cascades to categories before expenses.
+ * Expenses must be deleted before categories because
+ * expense.category_id → category.id is ON DELETE RESTRICT.
+ * Explicitly delete the test category in case user-deletion
+ * cascade fails, then clean up test users.
  */
 afterAll(async () => {
     if (authContext) {
-        // Delete expenses first to avoid FK ordering issues
         const { db } = await import('../lib/db');
-        const { expenses } = await import('../lib/db/schema');
-        await db.delete(expenses);
+        const { expenses, categories } = await import('../lib/db/schema');
+        const { eq } = await import('drizzle-orm');
 
-        // Now safe to delete users (cascade handles categories, groups,
-        // memberships, splits, settlements, and budgets)
-        if (testUser) await authContext.test.deleteUser(testUser.id);
-        if (secondUser) await authContext.test.deleteUser(secondUser.id);
+        try {
+            await db.delete(expenses);
+        } catch (err) {
+            console.error('[test-cleanup] Failed to delete expenses:', err);
+        }
+
+        // Delete the test category explicitly before deleting users,
+        // as cascade from user delete is theoretically handled by the FK
+        // but we want to be explicit about cleanup.
+        if (testCategory) {
+            try {
+                await db.delete(categories).where(eq(categories.id, testCategory.id));
+            } catch (err) {
+                console.error('[test-cleanup] Failed to delete test category:', err);
+            }
+        }
+
+        if (testUser) {
+            try {
+                await authContext.test.deleteUser(testUser.id);
+            } catch (err) {
+                console.error('[test-cleanup] Failed to delete test user:', err);
+            }
+        }
+        if (secondUser) {
+            try {
+                await authContext.test.deleteUser(secondUser.id);
+            } catch (err) {
+                console.error('[test-cleanup] Failed to delete second user:', err);
+            }
+        }
     }
 });

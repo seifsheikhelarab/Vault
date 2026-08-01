@@ -166,13 +166,13 @@ function ClaimsQueue() {
                         {statusFilter !== 'All' && ` · ${statusFilter}`}
                     </p>
                 </div>
-                <div className="flex items-center gap-2 bg-cream/60 rounded-[10px] p-1">
+                <div className="flex items-center gap-2 bg-cream/60 dark:bg-white/[0.06] rounded-[10px] p-1">
                     <button
                         onClick={() => setViewMode('admin')}
                         data-cuelume-toggle
                         className={`px-4 py-1.5 text-xs font-semibold rounded-[8px] transition-all duration-200 ${
                             viewMode === 'admin'
-                                ? 'bg-white text-text-primary shadow-warm-sm'
+                                ? 'bg-white dark:bg-[#2a2a2a] text-text-primary shadow-warm-sm'
                                 : 'text-text-tertiary hover:text-text-secondary'
                         }`}
                     >
@@ -183,7 +183,7 @@ function ClaimsQueue() {
                         data-cuelume-toggle
                         className={`px-4 py-1.5 text-xs font-semibold rounded-[8px] transition-all duration-200 ${
                             viewMode === 'my'
-                                ? 'bg-white text-text-primary shadow-warm-sm'
+                                ? 'bg-white dark:bg-[#2a2a2a] text-text-primary shadow-warm-sm'
                                 : 'text-text-tertiary hover:text-text-secondary'
                         }`}
                     >

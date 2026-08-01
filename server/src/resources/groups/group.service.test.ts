@@ -1,7 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { GroupService } from './group.service';
 import { db } from '../../lib/db';
-import { groups, memberships, expenses, splits, settlements } from '../../lib/db/schema';
+import {
+    groups,
+    memberships,
+    expenses,
+    splits,
+    settlements
+} from '../../lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { getTestUser, getSecondUser, getTestCategory } from '../../test/setup';
 
@@ -9,8 +15,15 @@ const service = new GroupService();
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
-async function createGroup(adminId: string, memberId?: string | null, kind = 'social') {
-    const group = await service.create(adminId, { name: 'Service Test Group', kind });
+async function createGroup(
+    adminId: string,
+    memberId?: string | null,
+    kind: 'social' | 'department' = 'social'
+) {
+    const group = await service.create(adminId, {
+        name: 'Service Test Group',
+        kind
+    });
     if (memberId && memberId !== adminId) {
         await db.insert(memberships).values({
             id: crypto.randomUUID(),
@@ -38,7 +51,10 @@ async function createExpense(payerId: string, groupId: string, amount: number) {
     return { id, amount, payerId };
 }
 
-async function createSplitsForExpense(expenseId: string, splitData: { userId: string; amount: number }[]) {
+async function createSplitsForExpense(
+    expenseId: string,
+    splitData: { userId: string; amount: number }[]
+) {
     const rows = splitData.map((s) => ({
         id: crypto.randomUUID(),
         expenseId,
@@ -48,7 +64,12 @@ async function createSplitsForExpense(expenseId: string, splitData: { userId: st
     await db.insert(splits).values(rows);
 }
 
-async function createSettlement(fromUserId: string, toUserId: string, amount: number, groupId: string) {
+async function createSettlement(
+    fromUserId: string,
+    toUserId: string,
+    amount: number,
+    groupId: string
+) {
     await db.insert(settlements).values({
         id: crypto.randomUUID(),
         fromUserId,
@@ -126,8 +147,12 @@ describe('GroupService', () => {
             const result = await service.getBalances(user.id, group.id);
             const balances = result!;
 
-            expect(Math.abs(balances.net[user.id] ?? 0)).toBeLessThanOrEqual(0.01);
-            expect(Math.abs(balances.net[secondUser.id] ?? 0)).toBeLessThanOrEqual(0.01);
+            expect(Math.abs(balances.net[user.id] ?? 0)).toBeLessThanOrEqual(
+                0.01
+            );
+            expect(
+                Math.abs(balances.net[secondUser.id] ?? 0)
+            ).toBeLessThanOrEqual(0.01);
             expect(balances.debts).toEqual([]);
         });
 
@@ -319,7 +344,11 @@ describe('GroupService', () => {
         it('computes department stats correctly', async () => {
             const user = getTestUser();
             const secondUser = getSecondUser();
-            const group = await createGroup(user.id, secondUser.id, 'department');
+            const group = await createGroup(
+                user.id,
+                secondUser.id,
+                'department'
+            );
 
             // Create expense for the department
             await createExpense(user.id, group.id, 100);
@@ -379,7 +408,7 @@ describe('GroupService', () => {
             const group = await createGroup(user.id);
             const result = await service.getById(user.id, group.id);
             expect(result).not.toBeNull();
-            expect((result as any).name).toBe('Service Test Group');
+            expect((result as { name: string }).name).toBe('Service Test Group');
         });
     });
 
@@ -388,7 +417,9 @@ describe('GroupService', () => {
             const user = getTestUser();
             const secondUser = getSecondUser();
             const group = await createGroup(user.id);
-            const result = await service.update(secondUser.id, group.id, { name: 'Hacked' });
+            const result = await service.update(secondUser.id, group.id, {
+                name: 'Hacked'
+            });
             expect(result).toEqual({ error: 'FORBIDDEN' });
         });
 
@@ -396,15 +427,19 @@ describe('GroupService', () => {
             const user = getTestUser();
             const secondUser = getSecondUser();
             const group = await createGroup(user.id, secondUser.id);
-            const result = await service.update(secondUser.id, group.id, { name: 'Hacked' });
+            const result = await service.update(secondUser.id, group.id, {
+                name: 'Hacked'
+            });
             expect(result).toEqual({ error: 'NOT_ADMIN' });
         });
 
         it('updates group when admin', async () => {
             const user = getTestUser();
             const group = await createGroup(user.id);
-            const result = await service.update(user.id, group.id, { name: 'Updated Group' });
-            expect((result as any).name).toBe('Updated Group');
+            const result = await service.update(user.id, group.id, {
+                name: 'Updated Group'
+            });
+            expect((result as { name: string }).name).toBe('Updated Group');
         });
     });
 
@@ -432,7 +467,10 @@ describe('GroupService', () => {
             expect(result).toEqual({ deleted: true });
 
             // Verify group is gone
-            const [g] = await db.select().from(groups).where(eq(groups.id, group.id));
+            const [g] = await db
+                .select()
+                .from(groups)
+                .where(eq(groups.id, group.id));
             expect(g).toBeUndefined();
         });
     });

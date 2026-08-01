@@ -17,7 +17,7 @@ export const Route = createRootRoute({
 
 function RootLayout() {
     const staggerRef = useRef<HTMLDivElement>(null);
-    const { data: session, isPending } = useSession();
+    const { data: session } = useSession();
     const navigate = useNavigate();
     const location = useLocation();
     const { theme, toggle: toggleTheme } = useTheme();
@@ -79,7 +79,7 @@ function RootLayout() {
 
                         {/* Context Switcher */}
                         {user && (
-                            <div className="hidden sm:flex items-center gap-1.5 p-0.5 bg-cream/60 rounded-[8px]">
+                            <div className="hidden sm:flex items-center gap-1.5 p-0.5 bg-cream/60 dark:bg-white/[0.06] rounded-[8px]">
                                 <button
                                     data-cuelume-press
                                     onClick={() => {
@@ -88,7 +88,7 @@ function RootLayout() {
                                     }}
                                     className={`px-3 py-1.5 rounded-[6px] text-xs font-semibold transition-all duration-150 ${
                                         context === 'personal'
-                                            ? 'bg-surface text-text-primary shadow-warm-sm'
+                                            ? 'bg-surface dark:bg-[#2a2a2a] text-text-primary shadow-warm-sm'
                                             : 'text-text-tertiary hover:text-text-secondary'
                                     }`}
                                 >
@@ -102,7 +102,7 @@ function RootLayout() {
                                     }}
                                     className={`px-3 py-1.5 rounded-[6px] text-xs font-semibold transition-all duration-150 ${
                                         context === 'company'
-                                            ? 'bg-surface text-text-primary shadow-warm-sm'
+                                            ? 'bg-surface dark:bg-[#2a2a2a] text-text-primary shadow-warm-sm'
                                             : 'text-text-tertiary hover:text-text-secondary'
                                     }`}
                                 >

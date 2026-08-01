@@ -1,8 +1,4 @@
-import {
-    createFileRoute,
-    redirect,
-    useNavigate
-} from '@tanstack/react-router';
+import { createFileRoute, Outlet, redirect, useLocation, useNavigate } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     createColumnHelper,
@@ -109,6 +105,9 @@ type ExpenseRow = Expense & { categoryName: string };
 const PAGE_SIZE = 10;
 
 export function ExpensesList() {
+    const location = useLocation();
+    const isChildActive = location.pathname !== '/expenses';
+
     const {
         q,
         cat,
@@ -149,8 +148,6 @@ export function ExpensesList() {
     useEffect(() => {
         requestAnimationFrame(() => setRevealed(true));
     }, []);
-
-
 
     const { data: session } = useSession();
     const currentUserId = session?.user?.id;
@@ -367,6 +364,10 @@ export function ExpensesList() {
     });
 
     const { rows } = table.getRowModel();
+
+    if (isChildActive) {
+        return <Outlet />;
+    }
 
     if (isLoading) {
         return (
@@ -825,11 +826,7 @@ export function ExpensesList() {
     );
 }
 
-function SortIcon({
-    column
-}: {
-    column: Column<ExpenseRow, unknown>;
-}) {
+function SortIcon({ column }: { column: Column<ExpenseRow, unknown> }) {
     const sorted = column.getIsSorted();
     return (
         <svg

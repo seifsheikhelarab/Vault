@@ -1,4 +1,4 @@
-import { eq, and, gte, lte, sql, desc } from 'drizzle-orm';
+import { eq, and, gte, lte, sql, desc, type SQL } from 'drizzle-orm';
 import { db } from '../../lib/db';
 import { expenses } from '../../lib/db/schema';
 import type {
@@ -19,7 +19,7 @@ export class ExpenseService {
 
     async list(userId: string, query: ExpenseQueryInput) {
         const { page, pageSize, categoryId, scope, groupId, from, to } = query;
-        const conditions: any[] = [];
+        const conditions: SQL<unknown>[] = [];
 
         // If groupId is specified, show all expenses in that group (membership check done in controller)
         if (groupId) {

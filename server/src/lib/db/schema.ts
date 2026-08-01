@@ -11,9 +11,7 @@ import {
     session,
     account,
     invitation,
-    member,
-    organization,
-    verification
+    member
 } from './auth-schema';
 
 // Re-export auth-schema tables so everything imports from one place

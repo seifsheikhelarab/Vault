@@ -5,4 +5,10 @@ export const createCategorySchema = z.object({
     icon: z.string().max(10).optional()
 });
 
+export const updateCategorySchema = z.object({
+    name: z.string().min(1).max(100).optional(),
+    icon: z.string().max(10).nullable().optional()
+});
+
 export type CreateCategoryInput = z.infer<typeof createCategorySchema>;
+export type UpdateCategoryInput = z.infer<typeof updateCategorySchema>;

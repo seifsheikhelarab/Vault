@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 
 const DURATION = 600;
-const EASE_OUT = 0.22;
 
 export function useCountUp(target: number, enabled = true) {
     const [display, setDisplay] = useState(0);

@@ -1,7 +1,8 @@
 import { Hono } from 'hono';
 import { createStorageProvider } from '../../lib/storage';
+import type { AppEnv } from '../../lib/middleware';
 
-const uploadRouter = new Hono();
+const uploadRouter = new Hono<AppEnv>();
 
 uploadRouter.post('/', async (c) => {
     const body = await c.req.parseBody();
@@ -16,14 +17,20 @@ uploadRouter.post('/', async (c) => {
 
     if (!file.type.startsWith('image/')) {
         return c.json(
-            { success: false, error: { message: 'Only image files are allowed' } },
+            {
+                success: false,
+                error: { message: 'Only image files are allowed' }
+            },
             400
         );
     }
 
     if (file.size > 10 * 1024 * 1024) {
         return c.json(
-            { success: false, error: { message: 'File too large. Maximum size is 10MB' } },
+            {
+                success: false,
+                error: { message: 'File too large. Maximum size is 10MB' }
+            },
             400
         );
     }

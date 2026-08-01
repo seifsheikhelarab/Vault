@@ -1,6 +1,8 @@
 import { createMiddleware } from 'hono/factory';
+import type { Context } from 'hono';
 import { auth } from './auth';
 
+/** Shared env type for all Hono apps that use auth. */
 export type AppEnv = {
     Variables: {
         userId: string;
@@ -15,6 +17,25 @@ export type AppEnv = {
         };
     };
 };
+
+/** Typed Hono context — use in controller method signatures. */
+export type AppContext = Context<AppEnv>;
+
+/**
+ * Extract JSON body validated by zValidator middleware.
+ * The type parameter is a narrowing assertion: zValidator already
+ * validated the data at runtime in the router layer.
+ */
+export function validBody<T>(c: AppContext): T {
+    return (c.req as unknown as { valid(target: 'json'): T }).valid('json');
+}
+
+/**
+ * Extract query params validated by zValidator middleware.
+ */
+export function validQuery<T>(c: AppContext): T {
+    return (c.req as unknown as { valid(target: 'query'): T }).valid('query');
+}
 
 export const authMiddleware = createMiddleware<AppEnv>(async (c, next) => {
     // Test mode: allow setting userId via x-test-user-id header

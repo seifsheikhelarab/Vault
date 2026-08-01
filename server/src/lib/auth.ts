@@ -14,6 +14,11 @@ export const auth = betterAuth({
     emailAndPassword: {
         enabled: true
     },
+    user: {
+        deleteUser: {
+            enabled: true
+        }
+    },
     plugins: [
         organization(),
         // testUtils() is included unconditionally because it does not expose public routes.

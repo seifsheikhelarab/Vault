@@ -244,6 +244,7 @@ body {
 
 .dark ::view-transition-old(root),
 .dark ::view-transition-new(root) {
+    animation-duration: 200ms;
     /* Keep transitions working in dark mode */
 }
 

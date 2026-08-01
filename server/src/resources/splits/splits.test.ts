@@ -7,8 +7,14 @@ import {
     getAuthHeaders
 } from '../../test/setup';
 import { db } from '../../lib/db';
-import { expenses, splits, groups, memberships } from '../../lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { expenses, groups, memberships } from '../../lib/db/schema';
+
+/** JSON shape of a split from the splits API */
+interface SplitResponse {
+    userId: string;
+    amount: string;
+    expenseId: string;
+}
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
@@ -17,7 +23,12 @@ async function createSocialGroup(adminId: string, memberId: string) {
     const groupId = crypto.randomUUID();
     const [g] = await db
         .insert(groups)
-        .values({ id: groupId, name: 'Split Group', kind: 'social', createdBy: adminId })
+        .values({
+            id: groupId,
+            name: 'Split Group',
+            kind: 'social',
+            createdBy: adminId
+        })
         .returning();
     await db.insert(memberships).values([
         { id: crypto.randomUUID(), groupId, userId: adminId, role: 'admin' },
@@ -27,7 +38,11 @@ async function createSocialGroup(adminId: string, memberId: string) {
 }
 
 /** Creates a group expense via direct DB insert and returns it */
-async function createGroupExpense(userId: string, groupId: string, amount = '90.00') {
+async function createGroupExpense(
+    userId: string,
+    groupId: string,
+    amount = '90.00'
+) {
     const category = getTestCategory();
     const expenseId = crypto.randomUUID();
     await db.insert(expenses).values({
@@ -87,10 +102,14 @@ describe('Splits API', () => {
             const groupExpense = await createGroupExpense(user.id, group.id);
 
             // Try to split an expense not owned by secondUser
-            const { res, body } = await createSplits(secondUser.id, groupExpense.id, [
-                { userId: user.id, amount: 30 },
-                { userId: secondUser.id, amount: 60 }
-            ]);
+            const { res, body } = await createSplits(
+                secondUser.id,
+                groupExpense.id,
+                [
+                    { userId: user.id, amount: 30 },
+                    { userId: secondUser.id, amount: 60 }
+                ]
+            );
             expect(res.status).toBe(403);
             expect(body.error.code).toBe('FORBIDDEN');
         });
@@ -98,7 +117,11 @@ describe('Splits API', () => {
         it('returns 400 when splits do not equal expense amount', async () => {
             const user = getTestUser();
             const group = await createSocialGroup(user.id, getSecondUser().id);
-            const groupExpense = await createGroupExpense(user.id, group.id, '100.00');
+            const groupExpense = await createGroupExpense(
+                user.id,
+                group.id,
+                '100.00'
+            );
 
             // Splits total 80, but expense is 100
             const { res, body } = await createSplits(user.id, groupExpense.id, [
@@ -107,14 +130,20 @@ describe('Splits API', () => {
             ]);
             expect(res.status).toBe(400);
             expect(body.error.code).toBe('BAD_REQUEST');
-            expect(body.error.message).toContain('Splits must equal expense amount');
+            expect(body.error.message).toContain(
+                'Splits must equal expense amount'
+            );
         });
 
         it('returns 201 and creates splits with valid data', async () => {
             const user = getTestUser();
             const secondUser = getSecondUser();
             const group = await createSocialGroup(user.id, secondUser.id);
-            const groupExpense = await createGroupExpense(user.id, group.id, '90.00');
+            const groupExpense = await createGroupExpense(
+                user.id,
+                group.id,
+                '90.00'
+            );
 
             const { res, body } = await createSplits(user.id, groupExpense.id, [
                 { userId: user.id, amount: 30 },
@@ -124,15 +153,23 @@ describe('Splits API', () => {
             expect(body.success).toBe(true);
             expect(Array.isArray(body.data)).toBe(true);
             expect(body.data.length).toBe(2);
-            expect(body.data.find((s: any) => s.userId === user.id)?.amount).toBe('30.00');
-            expect(body.data.find((s: any) => s.userId === secondUser.id)?.amount).toBe('60.00');
+            expect(
+                body.data.find((s: SplitResponse) => s.userId === user.id)?.amount
+            ).toBe('30.00');
+            expect(
+                body.data.find((s: SplitResponse) => s.userId === secondUser.id)?.amount
+            ).toBe('60.00');
         });
 
         it('replaces existing splits when creating new ones', async () => {
             const user = getTestUser();
             const secondUser = getSecondUser();
             const group = await createSocialGroup(user.id, secondUser.id);
-            const groupExpense = await createGroupExpense(user.id, group.id, '100.00');
+            const groupExpense = await createGroupExpense(
+                user.id,
+                group.id,
+                '100.00'
+            );
 
             // First split: 50/50
             await createSplits(user.id, groupExpense.id, [
@@ -147,8 +184,12 @@ describe('Splits API', () => {
             ]);
             expect(res.status).toBe(201);
             expect(body.data.length).toBe(2);
-            expect(body.data.find((s: any) => s.userId === user.id)?.amount).toBe('30.00');
-            expect(body.data.find((s: any) => s.userId === secondUser.id)?.amount).toBe('70.00');
+            expect(
+                body.data.find((s: SplitResponse) => s.userId === user.id)?.amount
+            ).toBe('30.00');
+            expect(
+                body.data.find((s: SplitResponse) => s.userId === secondUser.id)?.amount
+            ).toBe('70.00');
         });
     });
 
@@ -158,20 +199,27 @@ describe('Splits API', () => {
             const user = getTestUser();
             const secondUser = getSecondUser();
             const group = await createSocialGroup(user.id, secondUser.id);
-            const groupExpense = await createGroupExpense(user.id, group.id, '80.00');
+            const groupExpense = await createGroupExpense(
+                user.id,
+                group.id,
+                '80.00'
+            );
             await createSplits(user.id, groupExpense.id, [
                 { userId: user.id, amount: 40 },
                 { userId: secondUser.id, amount: 40 }
             ]);
 
-            const res = await app.request(`/api/splits?expenseId=${groupExpense.id}`, {
-                headers: getAuthHeaders(user.id)
-            });
+            const res = await app.request(
+                `/api/splits?expenseId=${groupExpense.id}`,
+                {
+                    headers: getAuthHeaders(user.id)
+                }
+            );
             expect(res.status).toBe(200);
             const body = await res.json();
             expect(body.success).toBe(true);
             expect(body.data.length).toBe(2);
-            body.data.forEach((s: any) => {
+            body.data.forEach((s: SplitResponse) => {
                 expect(s.expenseId).toBe(groupExpense.id);
             });
         });
@@ -180,7 +228,11 @@ describe('Splits API', () => {
             const user = getTestUser();
             const secondUser = getSecondUser();
             const group = await createSocialGroup(user.id, secondUser.id);
-            const groupExpense = await createGroupExpense(user.id, group.id, '60.00');
+            const groupExpense = await createGroupExpense(
+                user.id,
+                group.id,
+                '60.00'
+            );
             await createSplits(user.id, groupExpense.id, [
                 { userId: user.id, amount: 30 },
                 { userId: secondUser.id, amount: 30 }
@@ -218,16 +270,23 @@ describe('Splits API', () => {
             const user = getTestUser();
             const secondUser = getSecondUser();
             const group = await createSocialGroup(user.id, secondUser.id);
-            const groupExpense = await createGroupExpense(user.id, group.id, '50.00');
+            const groupExpense = await createGroupExpense(
+                user.id,
+                group.id,
+                '50.00'
+            );
             await createSplits(user.id, groupExpense.id, [
                 { userId: user.id, amount: 25 },
                 { userId: secondUser.id, amount: 25 }
             ]);
 
-            const res = await app.request(`/api/splits?expenseId=${groupExpense.id}`, {
-                method: 'DELETE',
-                headers: getAuthHeaders(secondUser.id)
-            });
+            const res = await app.request(
+                `/api/splits?expenseId=${groupExpense.id}`,
+                {
+                    method: 'DELETE',
+                    headers: getAuthHeaders(secondUser.id)
+                }
+            );
             expect(res.status).toBe(403);
         });
 
@@ -235,24 +294,34 @@ describe('Splits API', () => {
             const user = getTestUser();
             const secondUser = getSecondUser();
             const group = await createSocialGroup(user.id, secondUser.id);
-            const groupExpense = await createGroupExpense(user.id, group.id, '50.00');
+            const groupExpense = await createGroupExpense(
+                user.id,
+                group.id,
+                '50.00'
+            );
             await createSplits(user.id, groupExpense.id, [
                 { userId: user.id, amount: 25 },
                 { userId: secondUser.id, amount: 25 }
             ]);
 
-            const res = await app.request(`/api/splits?expenseId=${groupExpense.id}`, {
-                method: 'DELETE',
-                headers: getAuthHeaders(user.id)
-            });
+            const res = await app.request(
+                `/api/splits?expenseId=${groupExpense.id}`,
+                {
+                    method: 'DELETE',
+                    headers: getAuthHeaders(user.id)
+                }
+            );
             expect(res.status).toBe(200);
             const body = await res.json();
             expect(body.data.deleted).toBe(true);
 
             // Verify splits are gone
-            const listRes = await app.request(`/api/splits?expenseId=${groupExpense.id}`, {
-                headers: getAuthHeaders(user.id)
-            });
+            const listRes = await app.request(
+                `/api/splits?expenseId=${groupExpense.id}`,
+                {
+                    headers: getAuthHeaders(user.id)
+                }
+            );
             const listBody = await listRes.json();
             expect(listBody.data).toEqual([]);
         });

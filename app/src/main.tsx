@@ -15,6 +15,7 @@ const router = createRouter({
 
 // Intercept navigation to trigger View Transitions API
 const originalNavigate = router.navigate.bind(router);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 router.navigate = (opts: any) => {
     if (document.startViewTransition) {
         return document.startViewTransition(() => originalNavigate(opts))

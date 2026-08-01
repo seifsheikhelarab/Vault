@@ -7,7 +7,9 @@ export const createClaimSchema = z.object({
 export const claimQuerySchema = z.object({
     groupId: z.string().optional(),
     userId: z.string().optional(),
-    status: z.enum(['submitted', 'approved', 'rejected', 'reimbursed']).optional()
+    status: z
+        .enum(['submitted', 'approved', 'rejected', 'reimbursed'])
+        .optional()
 });
 
 export const rejectClaimSchema = z.object({

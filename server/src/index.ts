@@ -2,7 +2,6 @@ import 'dotenv/config';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
-import { csrf } from 'hono/csrf';
 import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 
@@ -17,6 +16,7 @@ import categoryRouter from './resources/categories/category.router';
 import budgetRouter from './resources/budgets/budget.router';
 import claimRouter from './resources/claims/claim.router';
 import uploadRouter from './resources/uploads/upload.router';
+import userRouter from './resources/users/user.router';
 
 const app = new Hono();
 
@@ -24,7 +24,13 @@ const app = new Hono();
 app.onError((err, c) => {
     console.error('[unhandled]', err);
     return c.json(
-        { success: false, error: { code: 'INTERNAL_ERROR', message: err.message || 'Internal Server Error' } },
+        {
+            success: false,
+            error: {
+                code: 'INTERNAL_ERROR',
+                message: err.message || 'Internal Server Error'
+            }
+        },
         500
     );
 });
@@ -60,6 +66,7 @@ api.route('/categories', categoryRouter);
 api.route('/budgets', budgetRouter);
 api.route('/claims', claimRouter);
 api.route('/uploads', uploadRouter);
+api.route('/users', userRouter);
 
 app.route('/api', api);
 

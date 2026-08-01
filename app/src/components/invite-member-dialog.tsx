@@ -68,8 +68,8 @@ export function InviteMemberDialog({
             setSent(true);
             setSubmitting(false);
             setTimeout(() => handleClose(), 1500);
-        } catch (err: any) {
-            setErrors({ submit: err.message ?? 'Failed to send invitation' });
+        } catch (err: unknown) {
+            setErrors({ submit: err instanceof Error ? err.message : 'Failed to send invitation' });
             setSubmitting(false);
         }
     };
@@ -191,7 +191,7 @@ export function InviteMemberDialog({
                         <label className="block text-xs font-semibold text-text-secondary mb-1.5">
                             Role
                         </label>
-                        <div className="flex gap-2 p-1 bg-cream/60 rounded-[8px]">
+                        <div className="flex gap-2 p-1 bg-cream/60 dark:bg-white/[0.06] rounded-[8px]">
                             {ROLES.map((r) => (
                                 <button
                                     key={r}
@@ -200,7 +200,7 @@ export function InviteMemberDialog({
                                     data-cuelume-toggle
                                     className={`flex-1 py-2 px-3 rounded-[6px] text-xs font-medium capitalize transition-colors duration-150 ${
                                         role === r
-                                            ? 'bg-white text-text-primary shadow-warm-sm'
+                                            ? 'bg-white dark:bg-[#2a2a2a] text-text-primary shadow-warm-sm'
                                             : 'text-text-tertiary hover:text-text-secondary'
                                     }`}
                                 >

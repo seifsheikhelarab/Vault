@@ -3,9 +3,9 @@ import { addMemberSchema, updateMemberSchema } from './membership.schema';
 
 describe('membership schemas', () => {
     describe('addMemberSchema', () => {
-        it('accepts a valid member', () => {
+        it('accepts a valid email', () => {
             const result = addMemberSchema.safeParse({
-                userId: 'user-123'
+                email: 'test@example.com'
             });
             expect(result.success).toBe(true);
             if (result.success) {
@@ -15,7 +15,7 @@ describe('membership schemas', () => {
 
         it('accepts an admin role', () => {
             const result = addMemberSchema.safeParse({
-                userId: 'user-123',
+                email: 'test@example.com',
                 role: 'admin'
             });
             expect(result.success).toBe(true);
@@ -24,16 +24,24 @@ describe('membership schemas', () => {
             }
         });
 
-        it('rejects empty userId', () => {
+        it('rejects empty email', () => {
+            expect(addMemberSchema.safeParse({ email: '' }).success).toBe(
+                false
+            );
+        });
+
+        it('rejects invalid email', () => {
             expect(
-                addMemberSchema.safeParse({ userId: '' }).success
+                addMemberSchema.safeParse({
+                    email: 'not-an-email'
+                }).success
             ).toBe(false);
         });
 
         it('rejects invalid role', () => {
             expect(
                 addMemberSchema.safeParse({
-                    userId: 'user-123',
+                    email: 'test@example.com',
                     role: 'owner'
                 }).success
             ).toBe(false);

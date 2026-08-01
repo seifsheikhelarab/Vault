@@ -41,16 +41,26 @@ describe('InviteMemberDialog', () => {
 
     it('renders the dialog when open is true', () => {
         render(
-            <InviteMemberDialog open={true} onClose={vi.fn()} organizationId="org-1" />,
+            <InviteMemberDialog
+                open={true}
+                onClose={vi.fn()}
+                organizationId="org-1"
+            />,
             { wrapper }
         );
         expect(screen.getByText('Invite Member')).toBeDefined();
-        expect(screen.getByPlaceholderText('colleague@company.com')).toBeDefined();
+        expect(
+            screen.getByPlaceholderText('colleague@company.com')
+        ).toBeDefined();
     });
 
     it('returns null when open is false', () => {
         const { container } = render(
-            <InviteMemberDialog open={false} onClose={vi.fn()} organizationId="org-1" />,
+            <InviteMemberDialog
+                open={false}
+                onClose={vi.fn()}
+                organizationId="org-1"
+            />,
             { wrapper }
         );
         expect(container.textContent).toBe('');
@@ -58,7 +68,11 @@ describe('InviteMemberDialog', () => {
 
     it('shows validation error for empty email on submit', async () => {
         render(
-            <InviteMemberDialog open={true} onClose={vi.fn()} organizationId="org-1" />,
+            <InviteMemberDialog
+                open={true}
+                onClose={vi.fn()}
+                organizationId="org-1"
+            />,
             { wrapper }
         );
         // Submit the form directly since the button is disabled when email is empty
@@ -69,7 +83,11 @@ describe('InviteMemberDialog', () => {
 
     it('shows validation error for invalid email format', async () => {
         render(
-            <InviteMemberDialog open={true} onClose={vi.fn()} organizationId="org-1" />,
+            <InviteMemberDialog
+                open={true}
+                onClose={vi.fn()}
+                organizationId="org-1"
+            />,
             { wrapper }
         );
         const input = screen.getByPlaceholderText('colleague@company.com');
@@ -82,7 +100,11 @@ describe('InviteMemberDialog', () => {
 
     it('toggles between member and admin roles', () => {
         render(
-            <InviteMemberDialog open={true} onClose={vi.fn()} organizationId="org-1" />,
+            <InviteMemberDialog
+                open={true}
+                onClose={vi.fn()}
+                organizationId="org-1"
+            />,
             { wrapper }
         );
         const adminBtn = screen.getByText('admin');
@@ -107,7 +129,11 @@ describe('InviteMemberDialog', () => {
         } as any);
 
         render(
-            <InviteMemberDialog open={true} onClose={vi.fn()} organizationId="org-1" />,
+            <InviteMemberDialog
+                open={true}
+                onClose={vi.fn()}
+                organizationId="org-1"
+            />,
             { wrapper }
         );
 
@@ -140,7 +166,11 @@ describe('InviteMemberDialog', () => {
         } as any);
 
         render(
-            <InviteMemberDialog open={true} onClose={vi.fn()} organizationId="org-1" />,
+            <InviteMemberDialog
+                open={true}
+                onClose={vi.fn()}
+                organizationId="org-1"
+            />,
             { wrapper }
         );
 
@@ -153,7 +183,9 @@ describe('InviteMemberDialog', () => {
     });
 
     it('shows submit error from mutation', async () => {
-        const mutateAsync = vi.fn().mockRejectedValue(new Error('Domain not allowed'));
+        const mutateAsync = vi
+            .fn()
+            .mockRejectedValue(new Error('Domain not allowed'));
         mockUseInviteMember.mockReturnValue({
             mutateAsync,
             isPending: false,
@@ -167,7 +199,11 @@ describe('InviteMemberDialog', () => {
         } as any);
 
         render(
-            <InviteMemberDialog open={true} onClose={vi.fn()} organizationId="org-1" />,
+            <InviteMemberDialog
+                open={true}
+                onClose={vi.fn()}
+                organizationId="org-1"
+            />,
             { wrapper }
         );
 
@@ -181,7 +217,11 @@ describe('InviteMemberDialog', () => {
     it('calls onClose when cancel is clicked', () => {
         const onClose = vi.fn();
         render(
-            <InviteMemberDialog open={true} onClose={onClose} organizationId="org-1" />,
+            <InviteMemberDialog
+                open={true}
+                onClose={onClose}
+                organizationId="org-1"
+            />,
             { wrapper }
         );
         fireEvent.click(screen.getByText('Cancel'));

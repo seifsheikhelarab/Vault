@@ -7,12 +7,18 @@ import { getTestUser, getSecondUser, getTestCategory } from '../../test/setup';
 
 const service = new SplitService();
 
+/** DB row shape returned by the split service (amount is numeric→string). */
+type SplitRow = typeof splits.$inferSelect;
+
 // ── Helpers ──────────────────────────────────────────────────────────
 
 async function createSocialGroup(adminId: string, memberId: string) {
     const groupId = crypto.randomUUID();
     await db.insert(groups).values({
-        id: groupId, name: 'Split Service Group', kind: 'social', createdBy: adminId
+        id: groupId,
+        name: 'Split Service Group',
+        kind: 'social',
+        createdBy: adminId
     });
     await db.insert(memberships).values([
         { id: crypto.randomUUID(), groupId, userId: adminId, role: 'admin' },
@@ -21,7 +27,11 @@ async function createSocialGroup(adminId: string, memberId: string) {
     return { id: groupId };
 }
 
-async function createGroupExpense(userId: string, groupId: string, amount = '80.00') {
+async function createGroupExpense(
+    userId: string,
+    groupId: string,
+    amount = '80.00'
+) {
     const category = getTestCategory();
     const expenseId = crypto.randomUUID();
     await db.insert(expenses).values({
@@ -100,10 +110,14 @@ describe('SplitService', () => {
             });
 
             expect(Array.isArray(result)).toBe(true);
-            const created = result as any[];
+            const created = result as SplitRow[];
             expect(created).toHaveLength(2);
-            expect(created.find((s: any) => s.userId === user.id)?.amount).toBe('30.00');
-            expect(created.find((s: any) => s.userId === secondUser.id)?.amount).toBe('60.00');
+            expect(created.find((s) => s.userId === user.id)?.amount).toBe(
+                '30.00'
+            );
+            expect(
+                created.find((s) => s.userId === secondUser.id)?.amount
+            ).toBe('60.00');
         });
 
         it('replaces existing splits on re-creation', async () => {
@@ -112,7 +126,6 @@ describe('SplitService', () => {
             const group = await createSocialGroup(user.id, secondUser.id);
             const exp = await createGroupExpense(user.id, group.id, '100.00');
 
-            // First split
             await service.create(user.id, {
                 expenseId: exp.id,
                 splits: [
@@ -121,7 +134,6 @@ describe('SplitService', () => {
                 ]
             });
 
-            // Replace with new splits
             const result = await service.create(user.id, {
                 expenseId: exp.id,
                 splits: [
@@ -130,13 +142,19 @@ describe('SplitService', () => {
                 ]
             });
 
-            const created = result as any[];
+            const created = result as SplitRow[];
             expect(created).toHaveLength(2);
-            expect(created.find((s: any) => s.userId === user.id)?.amount).toBe('30.00');
-            expect(created.find((s: any) => s.userId === secondUser.id)?.amount).toBe('70.00');
+            expect(created.find((s) => s.userId === user.id)?.amount).toBe(
+                '30.00'
+            );
+            expect(
+                created.find((s) => s.userId === secondUser.id)?.amount
+            ).toBe('70.00');
 
-            // Verify only 2 splits exist in DB (old ones replaced)
-            const allSplits = await db.select().from(splits).where(eq(splits.expenseId, exp.id));
+            const allSplits = await db
+                .select()
+                .from(splits)
+                .where(eq(splits.expenseId, exp.id));
             expect(allSplits).toHaveLength(2);
         });
     });
@@ -158,7 +176,7 @@ describe('SplitService', () => {
 
             const result = await service.list({ expenseId: exp.id });
             expect(result).toHaveLength(2);
-            (result as any[]).forEach((s: any) => {
+            (result as SplitRow[]).forEach((s) => {
                 expect(s.expenseId).toBe(exp.id);
             });
         });
@@ -184,7 +202,6 @@ describe('SplitService', () => {
             const user = getTestUser();
             const secondUser = getSecondUser();
             const group = await createSocialGroup(user.id, secondUser.id);
-            // Create expense but NO splits
             await createGroupExpense(user.id, group.id);
 
             const result = await service.list({ groupId: group.id });
@@ -195,7 +212,10 @@ describe('SplitService', () => {
     // ── deleteByExpense ───────────────────────────────────────────
     describe('deleteByExpense', () => {
         it('returns NOT_FOUND for non-existent expense', async () => {
-            const result = await service.deleteByExpense(getTestUser().id, 'non-existent');
+            const result = await service.deleteByExpense(
+                getTestUser().id,
+                'non-existent'
+            );
             expect(result).toEqual({ error: 'NOT_FOUND' });
         });
 
@@ -232,8 +252,10 @@ describe('SplitService', () => {
             const result = await service.deleteByExpense(user.id, exp.id);
             expect(result).toEqual({ deleted: true });
 
-            // Verify no splits remain
-            const remaining = await db.select().from(splits).where(eq(splits.expenseId, exp.id));
+            const remaining = await db
+                .select()
+                .from(splits)
+                .where(eq(splits.expenseId, exp.id));
             expect(remaining).toHaveLength(0);
         });
     });
@@ -244,7 +266,6 @@ describe('SplitService', () => {
             const user = getTestUser();
             const secondUser = getSecondUser();
             const group = await createSocialGroup(user.id, secondUser.id);
-            // Create and add a third user
             const { createTestUser } = await import('../../test/setup');
             const thirdUser = await createTestUser();
             const exp = await createGroupExpense(user.id, group.id, '90.00');
@@ -258,10 +279,9 @@ describe('SplitService', () => {
                 ]
             });
 
-            const created = result as any[];
+            const created = result as SplitRow[];
             expect(created).toHaveLength(3);
-            // All amounts should match
-            created.forEach((s: any) => expect(s.amount).toBe('30.00'));
+            created.forEach((s) => expect(s.amount).toBe('30.00'));
 
             const { deleteTestUser } = await import('../../test/setup');
             await deleteTestUser(thirdUser.id);
@@ -271,7 +291,6 @@ describe('SplitService', () => {
             const user = getTestUser();
             const secondUser = getSecondUser();
             const group = await createSocialGroup(user.id, secondUser.id);
-            // $10.99 split as 5.50 + 5.49
             const exp = await createGroupExpense(user.id, group.id, '10.99');
 
             const result = await service.create(user.id, {
@@ -282,10 +301,9 @@ describe('SplitService', () => {
                 ]
             });
 
-            const created = result as any[];
+            const created = result as SplitRow[];
             expect(created).toHaveLength(2);
-            // Amounts stored as strings with scale 2
-            const amounts = created.map((s: any) => s.amount);
+            const amounts = created.map((s) => s.amount);
             expect(amounts).toContain('5.50');
             expect(amounts).toContain('5.49');
         });
@@ -294,7 +312,6 @@ describe('SplitService', () => {
             const user = getTestUser();
             const secondUser = getSecondUser();
             const group = await createSocialGroup(user.id, secondUser.id);
-            // $50 expense, one user gets $50 and another gets $0
             const exp = await createGroupExpense(user.id, group.id, '50.00');
 
             const result = await service.create(user.id, {
@@ -305,10 +322,13 @@ describe('SplitService', () => {
                 ]
             });
 
-            const created = result as any[];
-            // Sum is 50 which equals expense, so it's accepted
+            const created = result as SplitRow[];
             expect(created).toHaveLength(2);
-            expect(Number(created.find((s: any) => s.userId === secondUser.id)?.amount)).toBe(0);
+            expect(
+                Number(
+                    created.find((s) => s.userId === secondUser.id)?.amount
+                )
+            ).toBe(0);
         });
     });
 });

@@ -9,10 +9,11 @@ import {
     splitsApi,
     uploadsApi,
     claimsApi,
-    companyApi
+    companyApi,
+    usersApi
 } from './api';
 import { authClient } from './auth-client';
-import type { Expense, Category, Budget, Group } from '@expense/shared';
+import type {} from '@expense/shared';
 
 // ─── Expenses ──────────────────────────────────────────────────────
 
@@ -114,6 +115,23 @@ export function useCreateCategory() {
     });
 }
 
+export function useUpdateCategory() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, ...data }: { id: string; name?: string; icon?: string | null }) =>
+            categoriesApi.update(id, data),
+        onSuccess: () => qc.invalidateQueries({ queryKey: ['categories'] })
+    });
+}
+
+export function useDeleteCategory() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => categoriesApi.delete(id),
+        onSuccess: () => qc.invalidateQueries({ queryKey: ['categories'] })
+    });
+}
+
 // ─── Budgets ───────────────────────────────────────────────────────
 
 export function useBudgets() {
@@ -186,6 +204,18 @@ export function useCreateGroup() {
     });
 }
 
+export function useUpdateGroup() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, ...data }: { id: string; name?: string }) =>
+            groupsApi.update(id, data),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['groups'] });
+            qc.invalidateQueries({ queryKey: ['group'] });
+        }
+    });
+}
+
 // ─── Group Detail ──────────────────────────────────────────────
 
 export function useGroup(id: string) {
@@ -211,16 +241,25 @@ export function useAddMember() {
     return useMutation({
         mutationFn: ({
             groupId,
-            userId,
+            email,
             role
         }: {
             groupId: string;
-            userId: string;
+            email: string;
             role?: string;
-        }) => membershipsApi.add(groupId, { userId, role }),
+        }) => membershipsApi.add(groupId, { email, role }),
         onSuccess: (_data, vars) => {
             qc.invalidateQueries({ queryKey: ['members', vars.groupId] });
         }
+    });
+}
+
+export function useUpdateMember() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, ...data }: { id: string; role?: string }) =>
+            membershipsApi.update(id, data),
+        onSuccess: () => qc.invalidateQueries({ queryKey: ['members'] })
     });
 }
 
@@ -264,6 +303,28 @@ export function useCreateSettlement() {
             qc.invalidateQueries({ queryKey: ['settlements'] });
             qc.invalidateQueries({ queryKey: ['balances'] });
         }
+    });
+}
+
+// ─── Settlement Detail ─────────────────────────────────────────
+
+export function useSettlement(id: string) {
+    return useQuery({
+        queryKey: ['settlement', id],
+        queryFn: () => settlementsApi.get(id),
+        enabled: !!id
+    });
+}
+
+// ─── Users ─────────────────────────────────────────────────────
+
+export function useUserSearch(query: string) {
+    return useQuery({
+        queryKey: ['users', 'search', query],
+        queryFn: () => usersApi.search(query),
+        enabled: query.length >= 2,
+        staleTime: 30_000,
+        placeholderData: (prev) => prev
     });
 }
 
@@ -337,6 +398,25 @@ export function useReimburseClaim() {
 
 // ─── Splits ──────────────────────────────────────────────────
 
+export function useSplits(expenseId: string) {
+    return useQuery({
+        queryKey: ['splits', expenseId],
+        queryFn: () => splitsApi.list(expenseId),
+        enabled: !!expenseId
+    });
+}
+
+export function useDeleteSplits() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (expenseId: string) => splitsApi.delete(expenseId),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['splits'] });
+            qc.invalidateQueries({ queryKey: ['balances'] });
+        }
+    });
+}
+
 export function useCreateSplits() {
     const qc = useQueryClient();
     return useMutation({
@@ -391,11 +471,21 @@ export function useCreateOrganization() {
     });
 }
 
+interface OrgMember {
+    id?: string;
+    userId?: string;
+    role: string;
+    user?: {
+        name?: string | null;
+        email?: string | null;
+    };
+}
+
 export function useOrganizationMembers(organizationId?: string) {
     return useQuery({
         queryKey: ['organization-members', organizationId],
         queryFn: async () => {
-            if (!organizationId) return [];
+            if (!organizationId) return [] as OrgMember[];
             const { data, error } =
                 await authClient.organization.getFullOrganization({
                     query: { organizationId }
@@ -404,7 +494,7 @@ export function useOrganizationMembers(organizationId?: string) {
                 throw new Error(
                     error.message ?? 'Failed to get organization members'
                 );
-            return (data as any)?.members ?? [];
+            return ((data as { members?: OrgMember[] })?.members ?? []) as OrgMember[];
         },
         enabled: !!organizationId
     });
@@ -419,7 +509,9 @@ export function useInviteMember() {
             role: string;
         }) => {
             const { data: invitation, error } =
-                await authClient.organization.inviteMember(data as any);
+                await authClient.organization.inviteMember(
+                    data as unknown as Parameters<typeof authClient.organization.inviteMember>[0]
+                );
             if (error)
                 throw new Error(error.message ?? 'Failed to invite member');
             return invitation!;
@@ -439,7 +531,10 @@ export function useRemoveOrgMember() {
             organizationId?: string;
         }) => {
             const { error } = await authClient.organization.removeMember(
-                data as any
+                data as {
+                    memberIdOrEmail: string;
+                    organizationId?: string;
+                }
             );
             if (error)
                 throw new Error(error.message ?? 'Failed to remove member');
@@ -455,7 +550,10 @@ export function useUpdateMemberRole() {
     return useMutation({
         mutationFn: async (data: { memberId: string; role: string }) => {
             const { error } = await authClient.organization.updateMemberRole(
-                data as any
+                data as {
+                    memberId: string;
+                    role: string;
+                }
             );
             if (error)
                 throw new Error(error.message ?? 'Failed to update role');

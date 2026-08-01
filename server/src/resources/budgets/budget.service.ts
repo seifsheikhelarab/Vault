@@ -13,9 +13,8 @@ export class BudgetService {
         return b;
     }
 
-    // Note: userId is accepted for API consistency with other services but
-    // budgets are currently not scoped per-user in list queries.
     async list(_userId: string) {
+        void _userId; // kept for API consistency across services
         const data = await db
             .select()
             .from(budgets)

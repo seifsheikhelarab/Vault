@@ -47,9 +47,7 @@ export function ReceiptUpload({ value, onChange }: ReceiptUploadProps) {
                 onChange(url);
                 setPreview(url);
             } catch (err) {
-                showError(
-                    err instanceof Error ? err.message : 'Upload failed'
-                );
+                showError(err instanceof Error ? err.message : 'Upload failed');
                 setPreview(value);
             } finally {
                 URL.revokeObjectURL(objectUrl);
