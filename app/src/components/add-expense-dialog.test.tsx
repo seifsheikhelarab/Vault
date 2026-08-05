@@ -36,7 +36,7 @@ function mockHooks(
     mockUseCreateExpense.mockReturnValue({
         mutateAsync: vi
             .fn()
-            .mockResolvedValue({ id: 'exp-1', amount: '42.50' }),
+            .mockResolvedValue({ id: 'exp-1', amountCents: 4250 }),
         isPending: overrides.createPending ?? false,
         isError: false,
         error: null,
@@ -50,7 +50,7 @@ function mockHooks(
     mockUseUpdateExpense.mockReturnValue({
         mutateAsync: vi
             .fn()
-            .mockResolvedValue({ id: 'exp-1', amount: '42.50' }),
+            .mockResolvedValue({ id: 'exp-1', amountCents: 4250 }),
         isPending: overrides.updatePending ?? false,
         isError: false,
         error: null,
@@ -62,7 +62,7 @@ function mockHooks(
     } as any);
 
     mockUseCategories.mockReturnValue({
-        data: [{ id: 'cat-1', name: 'Food', icon: '🍔' }],
+        data: [{ id: 'cat-1', name: 'Food' }],
         isPending: false,
         isLoading: false,
         isError: false,
@@ -128,7 +128,7 @@ describe('AddExpenseDialog', () => {
     it('shows "Edit Expense" title and pre-fills form in edit mode', async () => {
         const expense = {
             id: 'exp-1',
-            amount: '99.99',
+            amountCents: 9999,
             description: 'Office supplies',
             categoryId: 'cat-1',
             date: '2026-01-15T00:00:00.000Z',
@@ -186,7 +186,7 @@ describe('AddExpenseDialog', () => {
         });
 
         const callArgs = mutateAsync.mock.calls[0][0];
-        expect(callArgs.amount).toBe(42.5);
+        expect(callArgs.amountCents).toBe(4250);
         expect(callArgs.description).toBe('Groceries');
         expect(callArgs.categoryId).toBe('cat-1');
     });
@@ -194,7 +194,7 @@ describe('AddExpenseDialog', () => {
     it('calls updateExpense on valid form submit in edit mode', async () => {
         const expense = {
             id: 'exp-2',
-            amount: '50.00',
+            amountCents: 5000,
             description: 'Old description',
             categoryId: 'cat-1',
             date: '2026-01-15T00:00:00.000Z',
@@ -302,7 +302,7 @@ describe('AddExpenseDialog', () => {
     it('shows "Save Changes" button in edit mode', async () => {
         const expense = {
             id: 'exp-2',
-            amount: '50.00',
+            amountCents: 5000,
             description: 'Stuff',
             categoryId: 'cat-1',
             date: '2026-01-15T00:00:00.000Z',
@@ -337,7 +337,7 @@ describe('AddExpenseDialog', () => {
     it('does not show the "Open full form" link in edit mode', async () => {
         const expense = {
             id: 'exp-2',
-            amount: '50.00',
+            amountCents: 5000,
             description: 'Stuff',
             categoryId: 'cat-1',
             date: '2026-01-15T00:00:00.000Z',

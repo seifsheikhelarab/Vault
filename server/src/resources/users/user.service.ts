@@ -15,12 +15,7 @@ export class UserService {
                 email: user.email
             })
             .from(user)
-            .where(
-                or(
-                    like(user.email, pattern),
-                    like(user.name, pattern)
-                )
-            )
+            .where(or(like(user.email, pattern), like(user.name, pattern)))
             .limit(8);
 
         return results;

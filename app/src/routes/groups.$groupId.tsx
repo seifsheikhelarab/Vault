@@ -45,7 +45,9 @@ function GroupDetail() {
     // Add member state
     const [showAddMember, setShowAddMember] = useState(false);
     const [newMemberEmail, setNewMemberEmail] = useState('');
-    const [newMemberRole, setNewMemberRole] = useState<'member' | 'admin'>('member');
+    const [newMemberRole, setNewMemberRole] = useState<'member' | 'admin'>(
+        'member'
+    );
     const [addMemberError, setAddMemberError] = useState<string | null>(null);
     const [emailFocused, setEmailFocused] = useState(false);
     const [highlightIdx, setHighlightIdx] = useState(-1);
@@ -66,6 +68,31 @@ function GroupDetail() {
     const { data: members = [], isLoading: membersLoading } =
         useMembers(groupId);
     const { data: balances, isLoading: balancesLoading } = useBalances(groupId);
+    // Compute suggested settle: pay the person you owe the most
+    const suggestedSettle =
+        balances && currentUserId
+            ? (() => {
+                  const myBal = balances.find(
+                      (b: { userId: string; balanceCents: number }) =>
+                          b.userId === currentUserId
+                  );
+                  if (!myBal || myBal.balanceCents >= 0) return null;
+                  // Find who to pay: someone with a positive balance (creditor)
+                  const creditor = balances.find(
+                      (b: { userId: string; balanceCents: number }) =>
+                          b.balanceCents > 0
+                  );
+                  if (!creditor) return null;
+                  return {
+                      from: currentUserId,
+                      to: creditor.userId,
+                      amount: Math.min(
+                          Math.abs(myBal.balanceCents),
+                          creditor.balanceCents
+                      )
+                  };
+              })()
+            : null;
     const { data: settlements = [] } = useSettlements(groupId);
     const { data: groupExpensesData } = useExpenses({ groupId, pageSize: 50 });
     const groupExpenses = groupExpensesData?.items ?? [];
@@ -97,7 +124,9 @@ function GroupDetail() {
         createSettlement.mutate(
             {
                 toUserId: settling.to,
-                amount: parseFloat(settleAmount) || settling.amount,
+                amountCents: Math.round(
+                    (parseFloat(settleAmount) || settling.amount / 100) * 100
+                ),
                 groupId,
                 note: settleNote || undefined
             },
@@ -200,7 +229,10 @@ function GroupDetail() {
                     Groups
                 </Link>
                 {renaming ? (
-                    <form onSubmit={handleRename} className="flex items-center gap-2">
+                    <form
+                        onSubmit={handleRename}
+                        className="flex items-center gap-2"
+                    >
                         <input
                             type="text"
                             value={renameValue}
@@ -245,46 +277,48 @@ function GroupDetail() {
                 <h2 className="text-sm font-semibold text-text-primary mb-4">
                     Balances
                 </h2>
-                {balances && balances.debts.length > 0 ? (
-                    <div className="space-y-3">
-                        {balances.debts.map((debt, i) => (
+                {balances && balances.length > 0 ? (
+                    <div className="space-y-2">
+                        {balances.map((b) => (
                             <div
-                                key={i}
+                                key={b.userId}
                                 className="flex items-center justify-between py-2 px-4 bg-cream/40 rounded-[10px]"
                             >
-                                <div className="flex items-center gap-2 text-sm">
-                                    <span className="font-medium text-text-primary">
-                                        {debt.from === currentUserId
-                                            ? 'You'
-                                            : userNameMap.get(debt.from) ?? debt.from.slice(0, 8)}
-                                    </span>
-                                    <span className="text-text-tertiary">
-                                        owes
-                                    </span>
-                                    <span className="font-medium text-text-primary">
-                                        {debt.to === currentUserId
-                                            ? 'You'
-                                            : userNameMap.get(debt.to) ?? debt.to.slice(0, 8)}
-                                    </span>
-                                </div>
+                                <span className="text-sm font-medium text-text-primary">
+                                    {b.userId === currentUserId
+                                        ? 'You'
+                                        : (b.userName ?? b.userId.slice(0, 8))}
+                                </span>
                                 <div className="flex items-center gap-3">
-                                    <span className="font-mono font-semibold text-sm text-text-primary">
-                                        ${debt.amount.toFixed(2)}
+                                    <span
+                                        className={`font-mono font-semibold text-sm ${b.balanceCents >= 0 ? 'text-success' : 'text-coral'}`}
+                                    >
+                                        {b.balanceCents >= 0 ? '+' : '-'}$
+                                        {(
+                                            Math.abs(b.balanceCents) / 100
+                                        ).toFixed(2)}
                                     </span>
-                                    {debt.from === currentUserId && (
-                                        <button
-                                            onClick={() => {
-                                                setSettling(debt);
-                                                setSettleAmount(
-                                                    String(debt.amount)
-                                                );
-                                            }}
-                                            data-cuelume-press
-                                            className="text-xs font-medium text-coral hover:text-coral-dark transition-colors px-3 py-1 rounded-full border border-coral-light hover:bg-coral-light/30"
-                                        >
-                                            Settle
-                                        </button>
-                                    )}
+                                    {suggestedSettle &&
+                                        b.userId === suggestedSettle.from &&
+                                        b.balanceCents < 0 && (
+                                            <button
+                                                onClick={() => {
+                                                    setSettling(
+                                                        suggestedSettle
+                                                    );
+                                                    setSettleAmount(
+                                                        String(
+                                                            suggestedSettle.amount /
+                                                                100
+                                                        )
+                                                    );
+                                                }}
+                                                data-cuelume-press
+                                                className="text-xs font-medium text-coral hover:text-coral-dark transition-colors px-3 py-1 rounded-full border border-coral-light hover:bg-coral-light/30"
+                                            >
+                                                Settle
+                                            </button>
+                                        )}
                                 </div>
                             </div>
                         ))}
@@ -415,7 +449,7 @@ function GroupDetail() {
                                     </div>
                                 </div>
                                 <span className="font-mono text-sm font-semibold text-text-primary shrink-0 ml-3">
-                                    ${Number(expense.amount).toFixed(2)}
+                                    ${(expense.amountCents / 100).toFixed(2)}
                                 </span>
                             </div>
                         ))}
@@ -438,7 +472,15 @@ function GroupDetail() {
                             size="sm"
                             variant="ghost"
                             icon={
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                                <svg
+                                    width="12"
+                                    height="12"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2.5"
+                                    strokeLinecap="round"
+                                >
                                     <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
                                     <circle cx="9" cy="7" r="4" />
                                     <line x1="19" y1="8" x2="19" y2="14" />
@@ -479,33 +521,56 @@ function GroupDetail() {
                                         <input
                                             type="email"
                                             value={newMemberEmail}
-                                            onChange={(e) => setNewMemberEmail(e.target.value)}
+                                            onChange={(e) =>
+                                                setNewMemberEmail(
+                                                    e.target.value
+                                                )
+                                            }
                                             onFocus={() => {
                                                 setEmailFocused(true);
                                                 setHighlightIdx(-1);
                                             }}
                                             onBlur={() => {
-                                                blurTimeoutRef.current = setTimeout(
-                                                    () => setEmailFocused(false),
-                                                    150
-                                                );
+                                                blurTimeoutRef.current =
+                                                    setTimeout(
+                                                        () =>
+                                                            setEmailFocused(
+                                                                false
+                                                            ),
+                                                        150
+                                                    );
                                             }}
                                             onKeyDown={(e) => {
-                                                if (!userSuggestions.length) return;
+                                                if (!userSuggestions.length)
+                                                    return;
                                                 if (e.key === 'ArrowDown') {
                                                     e.preventDefault();
                                                     setHighlightIdx((i) =>
-                                                        i < userSuggestions.length - 1 ? i + 1 : 0
+                                                        i <
+                                                        userSuggestions.length -
+                                                            1
+                                                            ? i + 1
+                                                            : 0
                                                     );
-                                                } else if (e.key === 'ArrowUp') {
+                                                } else if (
+                                                    e.key === 'ArrowUp'
+                                                ) {
                                                     e.preventDefault();
                                                     setHighlightIdx((i) =>
-                                                        i > 0 ? i - 1 : userSuggestions.length - 1
+                                                        i > 0
+                                                            ? i - 1
+                                                            : userSuggestions.length -
+                                                              1
                                                     );
-                                                } else if (e.key === 'Enter' && highlightIdx >= 0) {
+                                                } else if (
+                                                    e.key === 'Enter' &&
+                                                    highlightIdx >= 0
+                                                ) {
                                                     e.preventDefault();
                                                     setNewMemberEmail(
-                                                        userSuggestions[highlightIdx].email
+                                                        userSuggestions[
+                                                            highlightIdx
+                                                        ].email
                                                     );
                                                     setEmailFocused(false);
                                                 } else if (e.key === 'Escape') {
@@ -514,41 +579,54 @@ function GroupDetail() {
                                             }}
                                             placeholder="friend@example.com"
                                             autoFocus
-                                            className="w-full px-4 py-2.5 bg-white border border-border rounded-[10px] text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-coral/20 focus:border-coral transition-colors duration-150"
+                                            className="w-full px-4 py-2.5 bg-[var(--color-surface)] border border-border rounded-[10px] text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-coral/20 focus:border-coral transition-colors duration-150"
                                         />
-                                        {userSuggestions.length > 0 && emailFocused && (
-                                            <div className="absolute top-full left-0 right-0 mt-1 bg-surface border border-border rounded-[10px] shadow-warm-lg overflow-hidden z-10">
-                                                {userSuggestions.map((u, idx) => (
-                                                    <button
-                                                        key={u.id}
-                                                        type="button"
-                                                        data-cuelume-press
-                                                        onMouseDown={(e) => {
-                                                            e.preventDefault();
-                                                            setNewMemberEmail(u.email);
-                                                            setEmailFocused(false);
-                                                        }}
-                                                        className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${
-                                                            idx === highlightIdx
-                                                                ? 'bg-coral-light/50'
-                                                                : 'hover:bg-cream/50'
-                                                        }`}
-                                                    >
-                                                        <div className="w-7 h-7 rounded-full bg-coral-light/60 flex items-center justify-center text-xs font-semibold text-coral shrink-0">
-                                                            {u.name?.[0]?.toUpperCase() ?? u.email[0].toUpperCase()}
-                                                        </div>
-                                                        <div className="min-w-0">
-                                                            <p className="text-sm font-medium text-text-primary truncate">
-                                                                {u.name}
-                                                            </p>
-                                                            <p className="text-xs text-text-tertiary truncate">
-                                                                {u.email}
-                                                            </p>
-                                                        </div>
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        )}
+                                        {userSuggestions.length > 0 &&
+                                            emailFocused && (
+                                                <div className="absolute top-full left-0 right-0 mt-1 bg-surface border border-border rounded-[10px] shadow-warm-lg overflow-hidden z-10">
+                                                    {userSuggestions.map(
+                                                        (u, idx) => (
+                                                            <button
+                                                                key={u.id}
+                                                                type="button"
+                                                                data-cuelume-press
+                                                                onMouseDown={(
+                                                                    e
+                                                                ) => {
+                                                                    e.preventDefault();
+                                                                    setNewMemberEmail(
+                                                                        u.email
+                                                                    );
+                                                                    setEmailFocused(
+                                                                        false
+                                                                    );
+                                                                }}
+                                                                className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${
+                                                                    idx ===
+                                                                    highlightIdx
+                                                                        ? 'bg-coral-light/50'
+                                                                        : 'hover:bg-cream/50'
+                                                                }`}
+                                                            >
+                                                                <div className="w-7 h-7 rounded-full bg-coral-light/60 flex items-center justify-center text-xs font-semibold text-coral shrink-0">
+                                                                    {u.name?.[0]?.toUpperCase() ??
+                                                                        u.email[0].toUpperCase()}
+                                                                </div>
+                                                                <div className="min-w-0">
+                                                                    <p className="text-sm font-medium text-text-primary truncate">
+                                                                        {u.name}
+                                                                    </p>
+                                                                    <p className="text-xs text-text-tertiary truncate">
+                                                                        {
+                                                                            u.email
+                                                                        }
+                                                                    </p>
+                                                                </div>
+                                                            </button>
+                                                        )
+                                                    )}
+                                                </div>
+                                            )}
                                     </div>
                                 </div>
                                 <div>
@@ -556,21 +634,25 @@ function GroupDetail() {
                                         Role
                                     </label>
                                     <div className="flex gap-1.5 p-1 bg-cream/60 dark:bg-white/[0.06] rounded-[8px]">
-                                        {(['member', 'admin'] as const).map((r) => (
-                                            <button
-                                                key={r}
-                                                type="button"
-                                                onClick={() => setNewMemberRole(r)}
-                                                data-cuelume-toggle
-                                                className={`flex-1 py-1.5 px-3 rounded-[6px] text-xs font-medium transition-colors duration-150 capitalize ${
-                                                    newMemberRole === r
-                                                        ? 'bg-white dark:bg-[#2a2a2a] text-text-primary shadow-warm-sm'
-                                                        : 'text-text-tertiary hover:text-text-secondary'
-                                                }`}
-                                            >
-                                                {r}
-                                            </button>
-                                        ))}
+                                        {(['member', 'admin'] as const).map(
+                                            (r) => (
+                                                <button
+                                                    key={r}
+                                                    type="button"
+                                                    onClick={() =>
+                                                        setNewMemberRole(r)
+                                                    }
+                                                    data-cuelume-toggle
+                                                    className={`flex-1 py-1.5 px-3 rounded-[6px] text-xs font-medium transition-colors duration-150 capitalize ${
+                                                        newMemberRole === r
+                                                            ? 'bg-white dark:bg-[#2a2a2a] text-text-primary shadow-warm-sm'
+                                                            : 'text-text-tertiary hover:text-text-secondary'
+                                                    }`}
+                                                >
+                                                    {r}
+                                                </button>
+                                            )
+                                        )}
                                     </div>
                                 </div>
                                 <div className="flex gap-3 pt-2">
@@ -584,11 +666,16 @@ function GroupDetail() {
                                     </button>
                                     <button
                                         type="submit"
-                                        disabled={!newMemberEmail.trim() || addMember.isPending}
+                                        disabled={
+                                            !newMemberEmail.trim() ||
+                                            addMember.isPending
+                                        }
                                         data-cuelume-press
                                         className="flex-1 px-4 py-2.5 bg-coral text-white text-sm font-medium rounded-[10px] hover:bg-coral-dark active:scale-[0.98] transition-all duration-200 disabled:opacity-50"
                                     >
-                                        {addMember.isPending ? 'Adding...' : 'Add Member'}
+                                        {addMember.isPending
+                                            ? 'Adding...'
+                                            : 'Add Member'}
                                     </button>
                                 </div>
                             </div>
@@ -608,13 +695,17 @@ function GroupDetail() {
                                     <div className="w-8 h-8 rounded-full bg-coral-light/60 flex items-center justify-center text-xs font-semibold text-coral">
                                         {isSelf
                                             ? 'You'
-                                            : (m.user?.name?.[0] ?? m.userId.slice(0, 2)).toUpperCase()}
+                                            : (
+                                                  m.user?.name?.[0] ??
+                                                  m.userId.slice(0, 2)
+                                              ).toUpperCase()}
                                     </div>
                                     <div className="flex items-center gap-1.5">
                                         <span className="text-sm font-medium text-text-primary">
                                             {isSelf
                                                 ? 'You'
-                                                : (m.user?.name ?? m.userId.slice(0, 12))}
+                                                : (m.user?.name ??
+                                                  m.userId.slice(0, 12))}
                                         </span>
                                         {m.role === 'admin' && (
                                             <span className="text-xs font-semibold text-coral bg-coral-light/50 px-2 py-0.5 rounded-full">
@@ -636,24 +727,56 @@ function GroupDetail() {
                                             onClick={() =>
                                                 updateMember.mutate({
                                                     id: m.id,
-                                                    role: m.role === 'admin' ? 'member' : 'admin'
+                                                    role:
+                                                        m.role === 'admin'
+                                                            ? 'member'
+                                                            : 'admin'
                                                 })
                                             }
                                             ariaLabel={`Change ${m.role} to ${m.role === 'admin' ? 'member' : 'admin'}`}
                                             disabled={updateMember.isPending}
                                         >
-                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <svg
+                                                width="13"
+                                                height="13"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                strokeWidth="2"
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                            >
                                                 <polyline points="16 3 21 8 8 21 3 21 3 16 16 3" />
                                             </svg>
                                         </IconButton>
                                         <IconButton
-                                            onClick={() => removeMember.mutate(m.id)}
+                                            onClick={() =>
+                                                removeMember.mutate(m.id)
+                                            }
                                             ariaLabel="Remove member"
                                             disabled={removeMember.isPending}
                                         >
-                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                                                <line x1="18" y1="6" x2="6" y2="18" />
-                                                <line x1="6" y1="6" x2="18" y2="18" />
+                                            <svg
+                                                width="13"
+                                                height="13"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                strokeWidth="2"
+                                                strokeLinecap="round"
+                                            >
+                                                <line
+                                                    x1="18"
+                                                    y1="6"
+                                                    x2="6"
+                                                    y2="18"
+                                                />
+                                                <line
+                                                    x1="6"
+                                                    y1="6"
+                                                    x2="18"
+                                                    y2="18"
+                                                />
                                             </svg>
                                         </IconButton>
                                     </div>
@@ -680,7 +803,8 @@ function GroupDetail() {
                                     <span className="font-medium text-text-primary">
                                         {s.fromUserId === currentUserId
                                             ? 'You'
-                                            : userNameMap.get(s.fromUserId) ?? s.fromUserId.slice(0, 8)}
+                                            : (userNameMap.get(s.fromUserId) ??
+                                              s.fromUserId.slice(0, 8))}
                                     </span>
                                     <span className="text-text-tertiary">
                                         paid
@@ -688,11 +812,12 @@ function GroupDetail() {
                                     <span className="font-medium text-text-primary">
                                         {s.toUserId === currentUserId
                                             ? 'You'
-                                            : userNameMap.get(s.toUserId) ?? s.toUserId.slice(0, 8)}
+                                            : (userNameMap.get(s.toUserId) ??
+                                              s.toUserId.slice(0, 8))}
                                     </span>
                                 </div>
                                 <span className="font-mono font-semibold text-text-primary">
-                                    ${Number(s.amount).toFixed(2)}
+                                    ${(s.amountCents / 100).toFixed(2)}
                                 </span>
                             </div>
                         ))}

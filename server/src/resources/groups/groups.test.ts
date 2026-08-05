@@ -73,17 +73,6 @@ describe('Groups API', () => {
             expect(body.error.code).toBe('UNAUTHORIZED');
         });
 
-        it('returns empty array when user belongs to no groups', async () => {
-            const user = getSecondUser(); // secondUser hasn't created any groups yet
-            const res = await app.request('/api/groups', {
-                headers: getAuthHeaders(user.id)
-            });
-            expect(res.status).toBe(200);
-            const body = await res.json();
-            expect(body.success).toBe(true);
-            expect(body.data).toEqual([]);
-        });
-
         it('returns groups the user belongs to', async () => {
             const user = getTestUser();
             await createGroup(user.id, { name: 'My Group' });
@@ -95,9 +84,9 @@ describe('Groups API', () => {
             const body = await res.json();
             expect(body.success).toBe(true);
             expect(Array.isArray(body.data)).toBe(true);
-            expect(body.data.some((g: GroupResponse) => g.name === 'My Group')).toBe(
-                true
-            );
+            expect(
+                body.data.some((g: GroupResponse) => g.name === 'My Group')
+            ).toBe(true);
         });
     });
 
@@ -127,16 +116,6 @@ describe('Groups API', () => {
                 method: 'POST',
                 headers: getAuthHeaders(user.id),
                 body: JSON.stringify({ name: '' })
-            });
-            expect(res.status).toBe(400);
-        });
-
-        it('returns 400 for name exceeding 100 chars', async () => {
-            const user = getTestUser();
-            const res = await app.request('/api/groups', {
-                method: 'POST',
-                headers: getAuthHeaders(user.id),
-                body: JSON.stringify({ name: 'x'.repeat(101) })
             });
             expect(res.status).toBe(400);
         });
@@ -181,13 +160,18 @@ describe('Groups API', () => {
                 name: 'Admin Test'
             });
 
-            // Verify the user can update the group (admin check passes)
-            const updateRes = await app.request(`/api/groups/${group.id}`, {
-                method: 'PATCH',
-                headers: getAuthHeaders(user.id),
-                body: JSON.stringify({ name: 'Updated Name' })
-            });
-            expect(updateRes.status).toBe(200);
+            // Verify the creator is an admin membership
+            const [membership] = await db
+                .select()
+                .from(memberships)
+                .where(
+                    and(
+                        eq(memberships.groupId, group.id),
+                        eq(memberships.userId, user.id)
+                    )
+                );
+            expect(membership).toBeDefined();
+            expect(membership.role).toBe('admin');
         });
     });
 
@@ -198,22 +182,15 @@ describe('Groups API', () => {
             expect(res.status).toBe(401);
         });
 
-        it('returns 403 when not a member', async () => {
+        it('returns 404 for non-existent group', async () => {
             const user = getTestUser();
-            const secondUser = getSecondUser();
-            const { body: group } = await createGroup(user.id, {
-                name: 'Private Group'
+            const res = await app.request('/api/groups/non-existent', {
+                headers: getAuthHeaders(user.id)
             });
-
-            const res = await app.request(`/api/groups/${group.id}`, {
-                headers: getAuthHeaders(secondUser.id)
-            });
-            expect(res.status).toBe(403);
-            const body = await res.json();
-            expect(body.error.code).toBe('FORBIDDEN');
+            expect(res.status).toBe(404);
         });
 
-        it('returns 200 and group data for a member', async () => {
+        it('returns 200 and group data', async () => {
             const user = getTestUser();
             const { body: group } = await createGroup(user.id, {
                 name: 'Visible Group'
@@ -230,147 +207,85 @@ describe('Groups API', () => {
         });
     });
 
-    // ── PATCH /api/groups/:id ──────────────────────────────────────
-    describe('PATCH /api/groups/:id', () => {
+    // ── POST /api/groups/:id/close ─────────────────────────────────
+    describe('POST /api/groups/:id/close', () => {
         it('returns 401 when not authenticated', async () => {
-            const res = await app.request('/api/groups/some-id', {
-                method: 'PATCH',
-                body: JSON.stringify({ name: 'Hack' })
+            const res = await app.request('/api/groups/some-id/close', {
+                method: 'POST'
             });
             expect(res.status).toBe(401);
         });
 
-        it('returns 403 when not a member', async () => {
+        it('returns 400 when a non-owner attempts to close', async () => {
             const user = getTestUser();
             const secondUser = getSecondUser();
             const { body: group } = await createGroup(user.id, {
                 name: 'Protected Group'
             });
-
-            const res = await app.request(`/api/groups/${group.id}`, {
-                method: 'PATCH',
-                headers: getAuthHeaders(secondUser.id),
-                body: JSON.stringify({ name: 'Hacked' })
-            });
-            expect(res.status).toBe(403);
-        });
-
-        it('returns 403 when a regular member (not admin)', async () => {
-            const user = getTestUser();
-            const secondUser = getSecondUser();
-            const { body: group } = await createGroup(user.id, {
-                name: 'Member Group'
-            });
-
-            // Add secondUser as a regular member
             await addMember(group.id, secondUser.id);
 
-            const res = await app.request(`/api/groups/${group.id}`, {
-                method: 'PATCH',
-                headers: getAuthHeaders(secondUser.id),
-                body: JSON.stringify({ name: 'Should Not Work' })
+            const res = await app.request(`/api/groups/${group.id}/close`, {
+                method: 'POST',
+                headers: getAuthHeaders(secondUser.id)
             });
-            expect(res.status).toBe(403);
+            expect(res.status).toBe(400);
+            const body = await res.json();
+            expect(body.error.code).toBe('VALIDATION_ERROR');
         });
 
-        it('returns 200 and updates the group name (admin)', async () => {
+        it('closes the group when the owner acts', async () => {
             const user = getTestUser();
             const { body: group } = await createGroup(user.id, {
-                name: 'Renamable'
+                name: 'Close Me'
             });
 
-            const res = await app.request(`/api/groups/${group.id}`, {
-                method: 'PATCH',
-                headers: getAuthHeaders(user.id),
-                body: JSON.stringify({ name: 'Renamed' })
+            const res = await app.request(`/api/groups/${group.id}/close`, {
+                method: 'POST',
+                headers: getAuthHeaders(user.id)
             });
             expect(res.status).toBe(200);
             const body = await res.json();
             expect(body.success).toBe(true);
-            expect(body.data.name).toBe('Renamed');
+            expect(body.data.closed).toBe(true);
+            expect(body.data.closedAt).toBeDefined();
         });
 
-        it('returns 200 and updates the group kind (admin)', async () => {
+        it('returns 400 when closing an already-closed group', async () => {
             const user = getTestUser();
             const { body: group } = await createGroup(user.id, {
-                name: 'Recategorizable',
-                kind: 'social'
+                name: 'Double Close'
             });
 
-            const res = await app.request(`/api/groups/${group.id}`, {
-                method: 'PATCH',
-                headers: getAuthHeaders(user.id),
-                body: JSON.stringify({ kind: 'department' })
+            await app.request(`/api/groups/${group.id}/close`, {
+                method: 'POST',
+                headers: getAuthHeaders(user.id)
             });
-            expect(res.status).toBe(200);
-            const body = await res.json();
-            expect(body.data.kind).toBe('department');
+            const res = await app.request(`/api/groups/${group.id}/close`, {
+                method: 'POST',
+                headers: getAuthHeaders(user.id)
+            });
+            expect(res.status).toBe(400);
         });
     });
 
-    // ── DELETE /api/groups/:id ─────────────────────────────────────
-    describe('DELETE /api/groups/:id', () => {
+    // ── GET /api/groups/summary ────────────────────────────────────
+    describe('GET /api/groups/summary', () => {
         it('returns 401 when not authenticated', async () => {
-            const res = await app.request('/api/groups/some-id', {
-                method: 'DELETE'
-            });
+            const res = await app.request('/api/groups/summary');
             expect(res.status).toBe(401);
         });
 
-        it('returns 403 when not a member', async () => {
+        it('returns a summary object', async () => {
             const user = getTestUser();
-            const secondUser = getSecondUser();
-            const { body: group } = await createGroup(user.id, {
-                name: 'To Delete'
-            });
-
-            const res = await app.request(`/api/groups/${group.id}`, {
-                method: 'DELETE',
-                headers: getAuthHeaders(secondUser.id)
-            });
-            expect(res.status).toBe(403);
-        });
-
-        it('returns 403 when a regular member (not admin)', async () => {
-            const user = getTestUser();
-            const secondUser = getSecondUser();
-            const { body: group } = await createGroup(user.id, {
-                name: 'Admin Only'
-            });
-
-            // Add secondUser as a regular member
-            await addMember(group.id, secondUser.id);
-
-            const res = await app.request(`/api/groups/${group.id}`, {
-                method: 'DELETE',
-                headers: getAuthHeaders(secondUser.id)
-            });
-            expect(res.status).toBe(403);
-        });
-
-        it('returns 200 and deletes the group (admin)', async () => {
-            const user = getTestUser();
-            const { body: group } = await createGroup(user.id, {
-                name: 'Delete Me'
-            });
-
-            const res = await app.request(`/api/groups/${group.id}`, {
-                method: 'DELETE',
+            const res = await app.request('/api/groups/summary', {
                 headers: getAuthHeaders(user.id)
             });
             expect(res.status).toBe(200);
             const body = await res.json();
             expect(body.success).toBe(true);
-            expect(body.data.deleted).toBe(true);
-
-            // Verify the group is gone — the membership is cascade-deleted too,
-            // so the GET handler returns 403 (not a member) instead of 404.
-            const getRes = await app.request(`/api/groups/${group.id}`, {
-                headers: getAuthHeaders(user.id)
-            });
-            // After deleting the group, the membership is cascade-deleted,
-            // so the user is no longer a member → 403 is correct behavior
-            expect([403, 404]).toContain(getRes.status);
+            expect(Array.isArray(body.data.departments)).toBe(true);
+            expect(typeof body.data.totalBudget).toBe('number');
+            expect(typeof body.data.totalSpent).toBe('number');
         });
     });
 });

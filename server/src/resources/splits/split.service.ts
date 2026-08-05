@@ -1,7 +1,19 @@
 import { eq, and, desc, inArray } from 'drizzle-orm';
 import { db } from '../../lib/db';
-import { splits, expenses } from '../../lib/db/schema';
+import { splits, expenses, user } from '../../lib/db/schema';
 import type { CreateSplitInput, SplitQueryInput } from './split.schema';
+
+async function getUserSnapshot(userId: string) {
+    const [u] = await db
+        .select({ name: user.name, email: user.email })
+        .from(user)
+        .where(eq(user.id, userId))
+        .limit(1);
+    return {
+        name: u?.name ?? 'Unknown',
+        email: u?.email ?? 'unknown@unknown'
+    };
+}
 
 export class SplitService {
     async create(userId: string, data: CreateSplitInput) {
@@ -14,20 +26,27 @@ export class SplitService {
 
         await db.delete(splits).where(eq(splits.expenseId, data.expenseId));
 
-        const total = data.splits.reduce((sum, s) => sum + s.amount, 0);
-        if (Math.abs(total - Number(expense.amount)) > 0.01) {
+        const total = data.splits.reduce((sum, s) => sum + s.amountCents, 0);
+        if (total !== expense.amountCents) {
             return {
                 error: 'BAD_REQUEST' as const,
                 message: 'Splits must equal expense amount'
             };
         }
 
-        const rows = data.splits.map((s) => ({
-            id: crypto.randomUUID(),
-            expenseId: data.expenseId,
-            userId: s.userId,
-            amount: String(s.amount)
-        }));
+        const rows = await Promise.all(
+            data.splits.map(async (s) => {
+                const snap = await getUserSnapshot(s.userId);
+                return {
+                    id: crypto.randomUUID(),
+                    expenseId: data.expenseId,
+                    userId: s.userId,
+                    amountCents: s.amountCents,
+                    userNameSnapshot: snap.name,
+                    userEmailSnapshot: snap.email
+                };
+            })
+        );
 
         const created = await db.insert(splits).values(rows).returning();
         return created;

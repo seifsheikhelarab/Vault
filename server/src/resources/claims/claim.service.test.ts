@@ -1,7 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import { ClaimService } from './claim.service';
 import { db } from '../../lib/db';
-import { claims, expenses, groups, memberships } from '../../lib/db/schema';
+import {
+    claims,
+    expenses,
+    groups,
+    memberships,
+    user
+} from '../../lib/db/schema';
+import { eq } from 'drizzle-orm';
 import { getTestUser, getSecondUser, getTestCategory } from '../../test/setup';
 
 const service = new ClaimService();
@@ -32,16 +39,23 @@ async function createDepartmentWithMember(adminId: string, memberId: string) {
 
 async function createGroupExpense(userId: string, groupId: string) {
     const category = getTestCategory();
+    const [payer] = await db
+        .select()
+        .from(user)
+        .where(eq(user.id, userId))
+        .limit(1);
     const expenseId = crypto.randomUUID();
     await db.insert(expenses).values({
         id: expenseId,
-        amount: '100.00',
+        amountCents: 10000,
         description: 'Service test expense',
         categoryId: category.id,
         userId,
         groupId,
         scope: 'company',
-        date: new Date()
+        date: new Date(),
+        payerNameSnapshot: payer?.name ?? 'Test User',
+        payerEmailSnapshot: payer?.email ?? 'test@example.com'
     });
     return { id: expenseId, userId };
 }

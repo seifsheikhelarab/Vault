@@ -1,0 +1,7 @@
+# Pending invitations before Group Membership
+
+Inviting a person to a social Group creates a pending Invitation through the existing Better Auth Organization invitation lifecycle. The invitation may target an email address whose recipient does not yet have a Vault account. The Invitation must be accepted before it creates an active Better Auth Organization Member; it can also be declined or expire. Pending invitees do not participate in balances, expenses, or permissions. The Better Auth Organization is the membership container for the domain Group, and its Member records are the sole source of active financial membership.
+
+The alternative — immediately inserting a custom Membership when an admin enters a user's email — changes access and balance participation without the recipient's consent and makes “invite” misleading. Reusing Better Auth avoids duplicating invitation tokens, expiry, acceptance, and non-user onboarding behavior. It also aligns social and company invitations, provided the Organization-to-Group relationship is made explicit.
+
+The trade-off is an additional acceptance step and direct coupling between the financial Group and Better Auth's Organization/Member records. That complexity is justified because Better Auth already provides the invitation lifecycle, including non-user recipients, and active membership is an identity relationship with financial consequences rather than merely an admin-side contact list.

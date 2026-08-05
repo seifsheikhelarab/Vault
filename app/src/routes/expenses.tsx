@@ -1,4 +1,10 @@
-import { createFileRoute, Outlet, redirect, useLocation, useNavigate } from '@tanstack/react-router';
+import {
+    createFileRoute,
+    Outlet,
+    redirect,
+    useLocation,
+    useNavigate
+} from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     createColumnHelper,
@@ -208,7 +214,7 @@ export function ExpensesList() {
                 return true;
             })
             .filter((e) => {
-                const amt = Number(e.amount);
+                const amt = e.amountCents / 100;
                 if (amountMin && amt < parseFloat(amountMin)) return false;
                 if (amountMax && amt > parseFloat(amountMax)) return false;
                 return true;
@@ -281,14 +287,14 @@ export function ExpensesList() {
                 cell: ({ getValue }) =>
                     new Date(getValue()).toLocaleDateString()
             }),
-            columnHelper.accessor('amount', {
+            columnHelper.accessor('amountCents', {
                 header: () => (
                     <span className="w-full text-right block">Amount</span>
                 ),
                 sortingFn: 'basic',
                 cell: ({ getValue }) => (
                     <span className="font-mono font-semibold text-text-primary">
-                        ${Number(getValue()).toFixed(2)}
+                        ${(getValue() / 100).toFixed(2)}
                     </span>
                 )
             }),
@@ -628,7 +634,7 @@ export function ExpensesList() {
                                         <th
                                             key={header.id}
                                             onClick={header.column.getToggleSortingHandler()}
-                                            className={`px-6 py-3.5 text-left text-xs font-semibold text-text-secondary ${sortable ? 'cursor-pointer select-none hover:text-coral transition-colors' : ''} ${header.column.id === 'amount' || header.column.id === 'actions' ? 'text-right' : ''}`}
+                                            className={`px-6 py-3.5 text-left text-xs font-semibold text-text-secondary ${sortable ? 'cursor-pointer select-none hover:text-coral transition-colors' : ''} ${header.column.id === 'amountCents' || header.column.id === 'actions' ? 'text-right' : ''}`}
                                         >
                                             {header.isPlaceholder
                                                 ? null
@@ -698,7 +704,7 @@ export function ExpensesList() {
                                     {row.getVisibleCells().map((cell) => (
                                         <td
                                             key={cell.id}
-                                            className={`px-6 py-4 text-sm text-text-primary ${cell.column.id === 'amount' || cell.column.id === 'actions' ? 'text-right' : ''}`}
+                                            className={`px-6 py-4 text-sm text-text-primary ${cell.column.id === 'amountCents' || cell.column.id === 'actions' ? 'text-right' : ''}`}
                                         >
                                             {flexRender(
                                                 cell.column.columnDef.cell,
@@ -795,9 +801,16 @@ export function ExpensesList() {
                             </button>
                             <button
                                 onClick={() => {
-                                    deleteExpense.mutate(deleteConfirm, {
-                                        onSuccess: () => setDeleteConfirm(null)
-                                    });
+                                    deleteExpense.mutate(
+                                        {
+                                            id: deleteConfirm,
+                                            reason: 'Deleted by user'
+                                        },
+                                        {
+                                            onSuccess: () =>
+                                                setDeleteConfirm(null)
+                                        }
+                                    );
                                 }}
                                 disabled={deleteExpense.isPending}
                                 data-cuelume-press

@@ -6,3 +6,4 @@ dist/
 .vite/
 /app/.agents
 /server/.agents
+/.freebuff

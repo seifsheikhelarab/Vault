@@ -1,5 +1,9 @@
 import { ClaimService } from './claim.service';
-import type { CreateClaimInput, ClaimQueryInput, RejectClaimInput } from './claim.schema';
+import type {
+    CreateClaimInput,
+    ClaimQueryInput,
+    RejectClaimInput
+} from './claim.schema';
 import { ok, fail } from '../../lib/response';
 import { validBody, validQuery, type AppContext } from '../../lib/middleware';
 

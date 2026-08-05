@@ -3,8 +3,8 @@ import { zValidator } from '@hono/zod-validator';
 import { ExpenseController } from './expense.controller';
 import {
     createExpenseSchema,
-    updateExpenseSchema,
-    expenseQuerySchema
+    reviseExpenseSchema,
+    deleteExpenseSchema
 } from './expense.schema';
 import type { AppEnv } from '../../lib/middleware';
 
@@ -14,17 +14,15 @@ const controller = new ExpenseController();
 expense.post('/', zValidator('json', createExpenseSchema), (c) =>
     controller.create(c)
 );
-
-expense.get('/', zValidator('query', expenseQuerySchema), (c) =>
-    controller.list(c)
+expense.get('/', (c) => controller.list(c));
+expense.get('/:id', (c) => controller.get(c));
+expense.get('/:id/splits', (c) => controller.getWithSplits(c));
+expense.get('/:id/revisions', (c) => controller.revisions(c));
+expense.patch('/:id', zValidator('json', reviseExpenseSchema), (c) =>
+    controller.revise(c)
 );
-
-expense.get('/:id', (c) => controller.getById(c));
-
-expense.patch('/:id', zValidator('json', updateExpenseSchema), (c) =>
-    controller.update(c)
+expense.delete('/:id', zValidator('json', deleteExpenseSchema), (c) =>
+    controller.delete(c)
 );
-
-expense.delete('/:id', (c) => controller.delete(c));
 
 export default expense;

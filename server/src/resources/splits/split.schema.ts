@@ -6,7 +6,10 @@ export const createSplitSchema = z.object({
         .array(
             z.object({
                 userId: z.string().min(1),
-                amount: z.number().positive()
+                amountCents: z
+                    .number()
+                    .int('amountCents must be an integer')
+                    .min(0)
             })
         )
         .min(1)

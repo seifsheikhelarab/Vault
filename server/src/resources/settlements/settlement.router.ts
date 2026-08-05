@@ -3,7 +3,7 @@ import { zValidator } from '@hono/zod-validator';
 import { SettlementController } from './settlement.controller';
 import {
     createSettlementSchema,
-    settlementQuerySchema
+    createSettlementCorrectionSchema
 } from './settlement.schema';
 import type { AppEnv } from '../../lib/middleware';
 
@@ -13,11 +13,13 @@ const controller = new SettlementController();
 settlement.post('/', zValidator('json', createSettlementSchema), (c) =>
     controller.create(c)
 );
-
-settlement.get('/', zValidator('query', settlementQuerySchema), (c) =>
-    controller.list(c)
+settlement.get('/', (c) => controller.list(c));
+settlement.get('/balances/:groupId', (c) => controller.balances(c));
+settlement.post(
+    '/correct',
+    zValidator('json', createSettlementCorrectionSchema),
+    (c) => controller.correct(c)
 );
-
-settlement.get('/:id', (c) => controller.getById(c));
+settlement.delete('/:id', (c) => controller.delete(c));
 
 export default settlement;

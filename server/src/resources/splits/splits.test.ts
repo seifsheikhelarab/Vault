@@ -7,12 +7,13 @@ import {
     getAuthHeaders
 } from '../../test/setup';
 import { db } from '../../lib/db';
-import { expenses, groups, memberships } from '../../lib/db/schema';
+import { expenses, groups, memberships, user } from '../../lib/db/schema';
+import { eq } from 'drizzle-orm';
 
 /** JSON shape of a split from the splits API */
 interface SplitResponse {
     userId: string;
-    amount: string;
+    amountCents: number;
     expenseId: string;
 }
 
@@ -41,28 +42,35 @@ async function createSocialGroup(adminId: string, memberId: string) {
 async function createGroupExpense(
     userId: string,
     groupId: string,
-    amount = '90.00'
+    amountCents = 9000
 ) {
     const category = getTestCategory();
+    const [payer] = await db
+        .select()
+        .from(user)
+        .where(eq(user.id, userId))
+        .limit(1);
     const expenseId = crypto.randomUUID();
     await db.insert(expenses).values({
         id: expenseId,
-        amount,
+        amountCents,
         description: 'Group dinner',
         categoryId: category.id,
         userId,
         groupId,
         scope: 'group',
-        date: new Date()
+        date: new Date(),
+        payerNameSnapshot: payer?.name ?? 'Test User',
+        payerEmailSnapshot: payer?.email ?? 'test@example.com'
     });
-    return { id: expenseId, amount, userId };
+    return { id: expenseId, amountCents, userId };
 }
 
 /** Creates splits via the API */
 async function createSplits(
     userId: string,
     expenseId: string,
-    splitData: { userId: string; amount: number }[]
+    splitData: { userId: string; amountCents: number }[]
 ) {
     const res = await app.request('/api/splits', {
         method: 'POST',
@@ -89,7 +97,7 @@ describe('Splits API', () => {
         it('returns 404 when expense does not exist', async () => {
             const user = getTestUser();
             const { res, body } = await createSplits(user.id, 'non-existent', [
-                { userId: user.id, amount: 50 }
+                { userId: user.id, amountCents: 5000 }
             ]);
             expect(res.status).toBe(404);
             expect(body.error.code).toBe('NOT_FOUND');
@@ -106,8 +114,8 @@ describe('Splits API', () => {
                 secondUser.id,
                 groupExpense.id,
                 [
-                    { userId: user.id, amount: 30 },
-                    { userId: secondUser.id, amount: 60 }
+                    { userId: user.id, amountCents: 3000 },
+                    { userId: secondUser.id, amountCents: 6000 }
                 ]
             );
             expect(res.status).toBe(403);
@@ -120,13 +128,13 @@ describe('Splits API', () => {
             const groupExpense = await createGroupExpense(
                 user.id,
                 group.id,
-                '100.00'
+                10000
             );
 
-            // Splits total 80, but expense is 100
+            // Splits total 8000, but expense is 10000
             const { res, body } = await createSplits(user.id, groupExpense.id, [
-                { userId: user.id, amount: 30 },
-                { userId: getSecondUser().id, amount: 50 }
+                { userId: user.id, amountCents: 3000 },
+                { userId: getSecondUser().id, amountCents: 5000 }
             ]);
             expect(res.status).toBe(400);
             expect(body.error.code).toBe('BAD_REQUEST');
@@ -142,23 +150,25 @@ describe('Splits API', () => {
             const groupExpense = await createGroupExpense(
                 user.id,
                 group.id,
-                '90.00'
+                9000
             );
 
             const { res, body } = await createSplits(user.id, groupExpense.id, [
-                { userId: user.id, amount: 30 },
-                { userId: secondUser.id, amount: 60 }
+                { userId: user.id, amountCents: 3000 },
+                { userId: secondUser.id, amountCents: 6000 }
             ]);
             expect(res.status).toBe(201);
             expect(body.success).toBe(true);
             expect(Array.isArray(body.data)).toBe(true);
             expect(body.data.length).toBe(2);
             expect(
-                body.data.find((s: SplitResponse) => s.userId === user.id)?.amount
-            ).toBe('30.00');
+                body.data.find((s: SplitResponse) => s.userId === user.id)
+                    ?.amountCents
+            ).toBe(3000);
             expect(
-                body.data.find((s: SplitResponse) => s.userId === secondUser.id)?.amount
-            ).toBe('60.00');
+                body.data.find((s: SplitResponse) => s.userId === secondUser.id)
+                    ?.amountCents
+            ).toBe(6000);
         });
 
         it('replaces existing splits when creating new ones', async () => {
@@ -168,28 +178,30 @@ describe('Splits API', () => {
             const groupExpense = await createGroupExpense(
                 user.id,
                 group.id,
-                '100.00'
+                10000
             );
 
             // First split: 50/50
             await createSplits(user.id, groupExpense.id, [
-                { userId: user.id, amount: 50 },
-                { userId: secondUser.id, amount: 50 }
+                { userId: user.id, amountCents: 5000 },
+                { userId: secondUser.id, amountCents: 5000 }
             ]);
 
             // Second split: 30/70 (replaces)
             const { res, body } = await createSplits(user.id, groupExpense.id, [
-                { userId: user.id, amount: 30 },
-                { userId: secondUser.id, amount: 70 }
+                { userId: user.id, amountCents: 3000 },
+                { userId: secondUser.id, amountCents: 7000 }
             ]);
             expect(res.status).toBe(201);
             expect(body.data.length).toBe(2);
             expect(
-                body.data.find((s: SplitResponse) => s.userId === user.id)?.amount
-            ).toBe('30.00');
+                body.data.find((s: SplitResponse) => s.userId === user.id)
+                    ?.amountCents
+            ).toBe(3000);
             expect(
-                body.data.find((s: SplitResponse) => s.userId === secondUser.id)?.amount
-            ).toBe('70.00');
+                body.data.find((s: SplitResponse) => s.userId === secondUser.id)
+                    ?.amountCents
+            ).toBe(7000);
         });
     });
 
@@ -202,11 +214,11 @@ describe('Splits API', () => {
             const groupExpense = await createGroupExpense(
                 user.id,
                 group.id,
-                '80.00'
+                8000
             );
             await createSplits(user.id, groupExpense.id, [
-                { userId: user.id, amount: 40 },
-                { userId: secondUser.id, amount: 40 }
+                { userId: user.id, amountCents: 4000 },
+                { userId: secondUser.id, amountCents: 4000 }
             ]);
 
             const res = await app.request(
@@ -231,11 +243,11 @@ describe('Splits API', () => {
             const groupExpense = await createGroupExpense(
                 user.id,
                 group.id,
-                '60.00'
+                6000
             );
             await createSplits(user.id, groupExpense.id, [
-                { userId: user.id, amount: 30 },
-                { userId: secondUser.id, amount: 30 }
+                { userId: user.id, amountCents: 3000 },
+                { userId: secondUser.id, amountCents: 3000 }
             ]);
 
             const res = await app.request(`/api/splits?groupId=${group.id}`, {
@@ -273,11 +285,11 @@ describe('Splits API', () => {
             const groupExpense = await createGroupExpense(
                 user.id,
                 group.id,
-                '50.00'
+                5000
             );
             await createSplits(user.id, groupExpense.id, [
-                { userId: user.id, amount: 25 },
-                { userId: secondUser.id, amount: 25 }
+                { userId: user.id, amountCents: 2500 },
+                { userId: secondUser.id, amountCents: 2500 }
             ]);
 
             const res = await app.request(
@@ -297,11 +309,11 @@ describe('Splits API', () => {
             const groupExpense = await createGroupExpense(
                 user.id,
                 group.id,
-                '50.00'
+                5000
             );
             await createSplits(user.id, groupExpense.id, [
-                { userId: user.id, amount: 25 },
-                { userId: secondUser.id, amount: 25 }
+                { userId: user.id, amountCents: 2500 },
+                { userId: secondUser.id, amountCents: 2500 }
             ]);
 
             const res = await app.request(

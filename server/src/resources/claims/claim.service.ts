@@ -61,7 +61,10 @@ export class ClaimService {
 
         if (allowedGroupIds.length === 0) return [];
 
-        let expenseFilter: SQL<unknown> = inArray(expenses.groupId, allowedGroupIds);
+        let expenseFilter: SQL<unknown> = inArray(
+            expenses.groupId,
+            allowedGroupIds
+        );
         if (query.userId) {
             expenseFilter = and(
                 expenseFilter,
@@ -93,7 +96,7 @@ export class ClaimService {
                 updatedAt: claims.updatedAt,
                 expense: {
                     id: expenses.id,
-                    amount: expenses.amount,
+                    amountCents: expenses.amountCents,
                     description: expenses.description,
                     date: expenses.date,
                     userId: expenses.userId,

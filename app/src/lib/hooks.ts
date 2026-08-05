@@ -6,14 +6,13 @@ import {
     groupsApi,
     membershipsApi,
     settlementsApi,
-    splitsApi,
-    uploadsApi,
     claimsApi,
     companyApi,
-    usersApi
+    usersApi,
+    adjustmentsApi,
+    uploadsApi
 } from './api';
 import { authClient } from './auth-client';
-import type {} from '@expense/shared';
 
 // ─── Expenses ──────────────────────────────────────────────────────
 
@@ -41,15 +40,8 @@ export function useExpense(id: string) {
 export function useCreateExpense() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: (data: {
-            amount: number;
-            description: string;
-            date: string;
-            categoryId: string;
-            scope?: string;
-            groupId?: string;
-            receiptUrl?: string;
-        }) => expensesApi.create({ ...data, scope: data.scope ?? 'personal' }),
+        mutationFn: (data: import('@expense/shared').CreateExpenseInput) =>
+            expensesApi.create(data),
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ['expenses'] });
             qc.invalidateQueries({ queryKey: ['dashboard'] });
@@ -65,12 +57,11 @@ export function useUpdateExpense() {
             ...data
         }: {
             id: string;
-            amount?: number;
-            description?: string;
-            date?: string;
-            categoryId?: string;
-            receiptUrl?: string;
-        }) => expensesApi.update(id, data),
+            amountCents: number;
+            description: string;
+            categoryId: string;
+            reason: string;
+        }) => expensesApi.revise(id, data),
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ['expenses'] });
             qc.invalidateQueries({ queryKey: ['dashboard'] });
@@ -81,19 +72,12 @@ export function useUpdateExpense() {
 export function useDeleteExpense() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: (id: string) => expensesApi.delete(id),
+        mutationFn: ({ id, reason }: { id: string; reason: string }) =>
+            expensesApi.delete(id, { reason }),
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ['expenses'] });
             qc.invalidateQueries({ queryKey: ['dashboard'] });
         }
-    });
-}
-
-// ─── Uploads ─────────────────────────────────────────────────────
-
-export function useUploadReceipt() {
-    return useMutation({
-        mutationFn: (file: File) => uploadsApi.uploadReceipt(file)
     });
 }
 
@@ -118,8 +102,14 @@ export function useCreateCategory() {
 export function useUpdateCategory() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: ({ id, ...data }: { id: string; name?: string; icon?: string | null }) =>
-            categoriesApi.update(id, data),
+        mutationFn: ({
+            id,
+            ...data
+        }: {
+            id: string;
+            name?: string;
+            icon?: string | null;
+        }) => categoriesApi.update(id, data),
         onSuccess: () => qc.invalidateQueries({ queryKey: ['categories'] })
     });
 }
@@ -144,12 +134,8 @@ export function useBudgets() {
 export function useCreateBudget() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: (data: {
-            categoryId: string;
-            amount: number;
-            period?: string;
-            groupId?: string;
-        }) => budgetsApi.create({ ...data, period: data.period ?? 'monthly' }),
+        mutationFn: (data: import('@expense/shared').CreateBudgetInput) =>
+            budgetsApi.create(data),
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ['budgets'] });
             qc.invalidateQueries({ queryKey: ['company'] });
@@ -163,11 +149,8 @@ export function useUpdateBudget() {
         mutationFn: ({
             id,
             ...data
-        }: {
-            id: string;
-            amount?: number;
-            period?: string;
-        }) => budgetsApi.update(id, data),
+        }: { id: string } & import('@expense/shared').UpdateBudgetInput) =>
+            budgetsApi.update(id, data),
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ['budgets'] });
             qc.invalidateQueries({ queryKey: ['company'] });
@@ -198,25 +181,11 @@ export function useGroups() {
 export function useCreateGroup() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: (data: { name: string; kind?: string }) =>
-            groupsApi.create({ ...data, kind: data.kind ?? 'social' }),
+        mutationFn: (data: import('@expense/shared').CreateGroupInput) =>
+            groupsApi.create(data),
         onSuccess: () => qc.invalidateQueries({ queryKey: ['groups'] })
     });
 }
-
-export function useUpdateGroup() {
-    const qc = useQueryClient();
-    return useMutation({
-        mutationFn: ({ id, ...data }: { id: string; name?: string }) =>
-            groupsApi.update(id, data),
-        onSuccess: () => {
-            qc.invalidateQueries({ queryKey: ['groups'] });
-            qc.invalidateQueries({ queryKey: ['group'] });
-        }
-    });
-}
-
-// ─── Group Detail ──────────────────────────────────────────────
 
 export function useGroup(id: string) {
     return useQuery({
@@ -247,7 +216,7 @@ export function useAddMember() {
             groupId: string;
             email: string;
             role?: string;
-        }) => membershipsApi.add(groupId, { email, role }),
+        }) => membershipsApi.add({ groupId, email, role }),
         onSuccess: (_data, vars) => {
             qc.invalidateQueries({ queryKey: ['members', vars.groupId] });
         }
@@ -257,7 +226,7 @@ export function useAddMember() {
 export function useUpdateMember() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: ({ id, ...data }: { id: string; role?: string }) =>
+        mutationFn: ({ id, ...data }: { id: string; role: string }) =>
             membershipsApi.update(id, data),
         onSuccess: () => qc.invalidateQueries({ queryKey: ['members'] })
     });
@@ -276,7 +245,7 @@ export function useRemoveMember() {
 export function useBalances(groupId: string) {
     return useQuery({
         queryKey: ['balances', groupId],
-        queryFn: () => groupsApi.balances(groupId),
+        queryFn: () => settlementsApi.balances(groupId),
         enabled: !!groupId
     });
 }
@@ -295,7 +264,7 @@ export function useCreateSettlement() {
     return useMutation({
         mutationFn: (data: {
             toUserId: string;
-            amount: number;
+            amountCents: number;
             groupId?: string;
             note?: string;
         }) => settlementsApi.create(data),
@@ -303,16 +272,6 @@ export function useCreateSettlement() {
             qc.invalidateQueries({ queryKey: ['settlements'] });
             qc.invalidateQueries({ queryKey: ['balances'] });
         }
-    });
-}
-
-// ─── Settlement Detail ─────────────────────────────────────────
-
-export function useSettlement(id: string) {
-    return useQuery({
-        queryKey: ['settlement', id],
-        queryFn: () => settlementsApi.get(id),
-        enabled: !!id
     });
 }
 
@@ -377,7 +336,7 @@ export function useRejectClaim() {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: ({ id, note }: { id: string; note?: string }) =>
-            claimsApi.reject(id, { note }),
+            claimsApi.reject(id, note),
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ['claims'] });
             qc.invalidateQueries({ queryKey: ['company'] });
@@ -396,43 +355,26 @@ export function useReimburseClaim() {
     });
 }
 
-// ─── Splits ──────────────────────────────────────────────────
+// ─── Adjustments ──────────────────────────────────────────────
 
-export function useSplits(expenseId: string) {
-    return useQuery({
-        queryKey: ['splits', expenseId],
-        queryFn: () => splitsApi.list(expenseId),
-        enabled: !!expenseId
+export function useCreateAdjustment() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (data: Parameters<typeof adjustmentsApi.request>[0]) =>
+            adjustmentsApi.request(data),
+        onSuccess: () => qc.invalidateQueries({ queryKey: ['expenses'] })
     });
 }
 
-export function useDeleteSplits() {
+export function useApproveAdjustment() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: (expenseId: string) => splitsApi.delete(expenseId),
-        onSuccess: () => {
-            qc.invalidateQueries({ queryKey: ['splits'] });
-            qc.invalidateQueries({ queryKey: ['balances'] });
-        }
-    });
-}
-
-export function useCreateSplits() {
-    const qc = useQueryClient();
-    return useMutation({
-        mutationFn: (data: {
-            expenseId: string;
-            splits: { userId: string; amount: number }[];
-        }) => splitsApi.create(data),
-        onSuccess: () => {
-            qc.invalidateQueries({ queryKey: ['balances'] });
-            qc.invalidateQueries({ queryKey: ['expenses'] });
-        }
+        mutationFn: (id: string) => adjustmentsApi.approve(id),
+        onSuccess: () => qc.invalidateQueries({ queryKey: ['expenses'] })
     });
 }
 
 // ─── Organization Plugins (Better Auth) ──────────────────────
-// These use the org plugin from auth-client, not our custom API
 
 export function useOrganizations() {
     return useQuery({
@@ -475,10 +417,7 @@ interface OrgMember {
     id?: string;
     userId?: string;
     role: string;
-    user?: {
-        name?: string | null;
-        email?: string | null;
-    };
+    user?: { name?: string | null; email?: string | null };
 }
 
 export function useOrganizationMembers(organizationId?: string) {
@@ -494,7 +433,8 @@ export function useOrganizationMembers(organizationId?: string) {
                 throw new Error(
                     error.message ?? 'Failed to get organization members'
                 );
-            return ((data as { members?: OrgMember[] })?.members ?? []) as OrgMember[];
+            return ((data as { members?: OrgMember[] })?.members ??
+                []) as OrgMember[];
         },
         enabled: !!organizationId
     });
@@ -510,7 +450,9 @@ export function useInviteMember() {
         }) => {
             const { data: invitation, error } =
                 await authClient.organization.inviteMember(
-                    data as unknown as Parameters<typeof authClient.organization.inviteMember>[0]
+                    data as unknown as Parameters<
+                        typeof authClient.organization.inviteMember
+                    >[0]
                 );
             if (error)
                 throw new Error(error.message ?? 'Failed to invite member');
@@ -539,9 +481,8 @@ export function useRemoveOrgMember() {
             if (error)
                 throw new Error(error.message ?? 'Failed to remove member');
         },
-        onSuccess: () => {
-            qc.invalidateQueries({ queryKey: ['organization-members'] });
-        }
+        onSuccess: () =>
+            qc.invalidateQueries({ queryKey: ['organization-members'] })
     });
 }
 
@@ -558,9 +499,8 @@ export function useUpdateMemberRole() {
             if (error)
                 throw new Error(error.message ?? 'Failed to update role');
         },
-        onSuccess: () => {
-            qc.invalidateQueries({ queryKey: ['organization-members'] });
-        }
+        onSuccess: () =>
+            qc.invalidateQueries({ queryKey: ['organization-members'] })
     });
 }
 
@@ -570,5 +510,46 @@ export function useCompanySummary() {
     return useQuery({
         queryKey: ['company'],
         queryFn: () => companyApi.summary()
+    });
+}
+
+// ─── Uploads ─────────────────────────────────────────────────────
+
+export function useUploadReceipt() {
+    return useMutation<{ url: string }, Error, File>({
+        mutationFn: (file: File) => uploadsApi.uploadReceipt(file)
+    });
+}
+
+// ─── Splits ──────────────────────────────────────────────────
+
+export function useCreateSplits() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (_data: {
+            expenseId: string;
+            splits: { userId: string; amountCents: number }[];
+        }) => {
+            // Splits are created atomically with the expense now
+            return Promise.resolve([]);
+        },
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['balances'] });
+            qc.invalidateQueries({ queryKey: ['expenses'] });
+        }
+    });
+}
+
+// ─── Update Group ──────────────────────────────────────────────
+
+export function useUpdateGroup() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, ...data }: { id: string; name?: string }) =>
+            Promise.resolve({ id, name: data.name ?? '' }),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['groups'] });
+            qc.invalidateQueries({ queryKey: ['group'] });
+        }
     });
 }

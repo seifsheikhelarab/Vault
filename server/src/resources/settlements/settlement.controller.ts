@@ -1,36 +1,106 @@
+import type { Context } from 'hono';
 import { SettlementService } from './settlement.service';
-import type { CreateSettlementInput, SettlementQueryInput } from './settlement.schema';
+import type {
+    CreateSettlementInput,
+    CreateSettlementCorrectionInput
+} from './settlement.schema';
+import { validBody } from '../../lib/middleware';
 import { ok, fail } from '../../lib/response';
-import { validBody, validQuery, type AppContext } from '../../lib/middleware';
+import type { AppEnv } from '../../lib/middleware';
 
 const service = new SettlementService();
 
 export class SettlementController {
-    async create(c: AppContext) {
+    async create(c: Context<AppEnv>) {
         const userId = c.get('userId');
+        const session = c.get('session');
         const body = validBody<CreateSettlementInput>(c);
-        if (body.toUserId === userId)
+
+        try {
+            const settlement = await service.create(userId, body, {
+                actorId: userId,
+                actorNameSnapshot: session.user.name,
+                actorEmailSnapshot: session.user.email
+            });
+            return c.json(ok(settlement), 201);
+        } catch (err: unknown) {
             return c.json(
-                fail('BAD_REQUEST', 'Cannot settle with yourself'),
+                fail(
+                    'VALIDATION_ERROR',
+                    err instanceof Error
+                        ? err.message
+                        : 'Failed to create settlement'
+                ),
                 400
             );
-        const settlement = await service.create(userId, body);
-        return c.json(ok(settlement), 201);
+        }
     }
 
-    async list(c: AppContext) {
-        const userId = c.get('userId');
-        const query = validQuery<SettlementQueryInput>(c);
-        const data = await service.list(userId, query);
+    async list(c: Context<AppEnv>) {
+        const groupId = c.req.query('groupId') ?? undefined;
+        const data = await service.list(groupId);
         return c.json(ok(data));
     }
 
-    async getById(c: AppContext) {
+    async balances(c: Context<AppEnv>) {
         const userId = c.get('userId');
+        const groupId = c.req.param('groupId')!;
+
+        const isMember = await service.isGroupMember(groupId, userId);
+        if (!isMember) {
+            return c.json(
+                fail('FORBIDDEN', 'Not a member of this group'),
+                403
+            );
+        }
+
+        const balances = await service.getBalances(groupId);
+        return c.json(ok(balances));
+    }
+
+    async correct(c: Context<AppEnv>) {
+        const userId = c.get('userId');
+        const session = c.get('session');
+        const body = validBody<CreateSettlementCorrectionInput>(c);
+
+        try {
+            const correction = await service.correct(userId, body, {
+                actorId: userId,
+                actorNameSnapshot: session.user.name,
+                actorEmailSnapshot: session.user.email
+            });
+            return c.json(ok(correction), 201);
+        } catch (err: unknown) {
+            return c.json(
+                fail(
+                    'VALIDATION_ERROR',
+                    err instanceof Error ? err.message : 'Correction failed'
+                ),
+                400
+            );
+        }
+    }
+
+    async delete(c: Context<AppEnv>) {
+        const userId = c.get('userId');
+        const session = c.get('session');
         const id = c.req.param('id')!;
-        const settlement = await service.getById(userId, id);
-        if (!settlement)
-            return c.json(fail('NOT_FOUND', 'Settlement not found'), 404);
-        return c.json(ok(settlement));
+
+        try {
+            const result = await service.delete(id, userId, {
+                actorId: userId,
+                actorNameSnapshot: session.user.name,
+                actorEmailSnapshot: session.user.email
+            });
+            return c.json(ok(result));
+        } catch (err: unknown) {
+            return c.json(
+                fail(
+                    'VALIDATION_ERROR',
+                    err instanceof Error ? err.message : 'Delete failed'
+                ),
+                400
+            );
+        }
     }
 }

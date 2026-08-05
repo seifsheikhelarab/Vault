@@ -22,7 +22,7 @@ const variantClasses: Record<ButtonVariant, string> = {
     primary:
         'bg-coral text-white hover:bg-coral-dark shadow-warm-sm hover:shadow-warm-md active:scale-[0.98]',
     secondary:
-        'bg-white text-text-secondary border border-border hover:bg-cream hover:text-text-primary shadow-warm-sm',
+        'bg-[var(--color-surface)] text-text-secondary border border-border hover:bg-cream hover:text-text-primary shadow-warm-sm',
     ghost: 'text-text-secondary hover:text-text-primary hover:bg-cream/80',
     danger: 'bg-error text-white hover:bg-error/80 shadow-warm-sm active:scale-[0.98]'
 };
@@ -196,7 +196,7 @@ export function Skeleton({ className = '' }: SkeletonProps) {
                 <div className="w-full h-full bg-cream rounded-[10px]" />
             </div>
             <div className="t-skel-content">
-                <div className="w-full h-full bg-white rounded-[10px]" />
+                <div className="w-full h-full bg-[var(--color-surface)] rounded-[10px]" />
             </div>
         </div>
     );

@@ -1,7 +1,10 @@
 import { desc, eq, isNull, or, and } from 'drizzle-orm';
 import { db } from '../../lib/db';
 import { categories, expenses } from '../../lib/db/schema';
-import type { CreateCategoryInput, UpdateCategoryInput } from './category.schema';
+import type {
+    CreateCategoryInput,
+    UpdateCategoryInput
+} from './category.schema';
 
 export class CategoryService {
     async create(userId: string, data: CreateCategoryInput) {

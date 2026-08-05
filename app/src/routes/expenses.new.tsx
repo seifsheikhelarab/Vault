@@ -17,6 +17,7 @@ import { DEFAULT_EXPENSE_SEARCH } from './expenses';
 import { useSession } from '../lib/auth-client';
 import { authClient } from '../lib/auth-client';
 import { ReceiptUpload } from '../components/receipt-upload';
+import { getCategoryIcon } from '../components/category-picker';
 import { Button } from '../components/shared';
 
 export const Route = createFileRoute('/expenses/new')({
@@ -186,7 +187,7 @@ function NewExpense() {
         try {
             // Step 1: Create the expense
             const expense = await createExpense.mutateAsync({
-                amount: totalAmount,
+                amountCents: Math.round(totalAmount * 100),
                 description: description.trim(),
                 categoryId,
                 date: new Date(date).toISOString(),
@@ -200,7 +201,7 @@ function NewExpense() {
             if (scope === 'group' && expense?.id && memberCount > 0) {
                 const splits = splitMembers.map((m) => ({
                     userId: m.userId,
-                    amount: computeShare(m.userId)
+                    amountCents: Math.round(computeShare(m.userId) * 100)
                 }));
                 await createSplits.mutateAsync({
                     expenseId: expense.id,
@@ -227,7 +228,12 @@ function NewExpense() {
                 1400
             );
         } catch (err: unknown) {
-            setErrors({ submit: err instanceof Error ? err.message : 'Failed to create expense' });
+            setErrors({
+                submit:
+                    err instanceof Error
+                        ? err.message
+                        : 'Failed to create expense'
+            });
             setSubmitting(false);
         }
     };
@@ -891,20 +897,7 @@ function NewExpense() {
                                 }`}
                             >
                                 <span className="text-xl">
-                                    {cat.icon || (
-                                        <svg
-                                            width="24"
-                                            height="24"
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            strokeWidth="2"
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                        >
-                                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-                                        </svg>
-                                    )}
+                                    {getCategoryIcon(cat.name)}
                                 </span>
                                 <span className="text-xs font-semibold">
                                     {cat.name}

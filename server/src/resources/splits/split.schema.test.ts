@@ -5,7 +5,7 @@ describe('split schemas', () => {
     describe('createSplitSchema', () => {
         const valid = {
             expenseId: 'exp-123',
-            splits: [{ userId: 'user-1', amount: 10 }]
+            splits: [{ userId: 'user-1', amountCents: 1000 }]
         };
 
         it('accepts a valid split', () => {
@@ -30,13 +30,21 @@ describe('split schemas', () => {
             ).toBe(false);
         });
 
-        it('rejects zero or negative amounts in splits', () => {
+        it('rejects negative amounts in splits', () => {
             expect(
                 createSplitSchema.safeParse({
                     ...valid,
-                    splits: [{ userId: 'user-1', amount: 0 }]
+                    splits: [{ userId: 'user-1', amountCents: -1 }]
                 }).success
             ).toBe(false);
+        });
+
+        it('accepts zero-amount splits (retained participant)', () => {
+            const result = createSplitSchema.safeParse({
+                ...valid,
+                splits: [{ userId: 'user-1', amountCents: 0 }]
+            });
+            expect(result.success).toBe(true);
         });
     });
 

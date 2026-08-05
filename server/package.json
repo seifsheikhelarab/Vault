@@ -9,6 +9,8 @@
         "db:generate": "drizzle-kit generate",
         "db:migrate": "drizzle-kit migrate",
         "db:push": "drizzle-kit push",
+        "db:seed": "tsx seed.ts",
+        "db:seed-test": "tsx seed-test-data.ts",
         "db:studio": "drizzle-kit studio",
         "test": "vitest",
         "typecheck": "tsc --noEmit",

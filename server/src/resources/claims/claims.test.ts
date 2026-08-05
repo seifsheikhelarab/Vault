@@ -7,8 +7,8 @@ import {
     getAuthHeaders
 } from '../../test/setup';
 import { db } from '../../lib/db';
-import { expenses, memberships, groups } from '../../lib/db/schema';
-
+import { expenses, memberships, groups, user } from '../../lib/db/schema';
+import { eq } from 'drizzle-orm';
 
 /** JSON shape of a claim + expense from GET /api/claims */
 interface ClaimResponse {
@@ -41,20 +41,27 @@ async function createDepartmentWithMember(adminId: string, memberId: string) {
 /** Creates an expense in a department group and returns its data */
 async function createGroupExpense(userId: string, groupId: string) {
     const category = getTestCategory();
+    const [payer] = await db
+        .select()
+        .from(user)
+        .where(eq(user.id, userId))
+        .limit(1);
     const expenseId = crypto.randomUUID();
     await db.insert(expenses).values({
         id: expenseId,
-        amount: '100.00',
+        amountCents: 10000,
         description: 'Test expense for claim',
         categoryId: category.id,
         userId,
         groupId,
         scope: 'company',
-        date: new Date()
+        date: new Date(),
+        payerNameSnapshot: payer?.name ?? 'Test User',
+        payerEmailSnapshot: payer?.email ?? 'test@example.com'
     });
     return {
         id: expenseId,
-        amount: '100.00',
+        amountCents: 10000,
         description: 'Test expense for claim',
         userId
     };
@@ -197,9 +204,9 @@ describe('Claims API', () => {
             });
             expect(res.status).toBe(200);
             const body = await res.json();
-            expect(body.data.every((c: ClaimResponse) => c.status === 'submitted')).toBe(
-                true
-            );
+            expect(
+                body.data.every((c: ClaimResponse) => c.status === 'submitted')
+            ).toBe(true);
 
             // Should not find any approved claims
             const res2 = await app.request('/api/claims?status=approved', {
@@ -230,7 +237,9 @@ describe('Claims API', () => {
             const body = await res.json();
             expect(body.data.length).toBeGreaterThanOrEqual(1);
             expect(
-                body.data.every((c: ClaimResponse) => c.expense.userId === user.id)
+                body.data.every(
+                    (c: ClaimResponse) => c.expense.userId === user.id
+                )
             ).toBe(true);
         });
     });
@@ -395,7 +404,9 @@ describe('Claims API', () => {
                 headers: getAuthHeaders(user.id)
             });
             const listBody = await listRes.json();
-            expect(listBody.data.some((c: ClaimResponse) => c.id === claimId)).toBe(true);
+            expect(
+                listBody.data.some((c: ClaimResponse) => c.id === claimId)
+            ).toBe(true);
         });
 
         it('completes the full submit → reject workflow', async () => {
@@ -434,9 +445,9 @@ describe('Claims API', () => {
                 }
             );
             const approvedBody = await approvedRes.json();
-            expect(approvedBody.data.some((c: ClaimResponse) => c.id === claimId)).toBe(
-                false
-            );
+            expect(
+                approvedBody.data.some((c: ClaimResponse) => c.id === claimId)
+            ).toBe(false);
 
             // 4. But it IS in the rejected list
             const rejectedRes = await app.request(
@@ -446,9 +457,9 @@ describe('Claims API', () => {
                 }
             );
             const rejectedBody = await rejectedRes.json();
-            expect(rejectedBody.data.some((c: ClaimResponse) => c.id === claimId)).toBe(
-                true
-            );
+            expect(
+                rejectedBody.data.some((c: ClaimResponse) => c.id === claimId)
+            ).toBe(true);
         });
     });
 });

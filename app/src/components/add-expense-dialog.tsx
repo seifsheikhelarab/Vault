@@ -29,7 +29,7 @@ const emptyForm: FormValues = {
 
 function formFromExpense(expense: Expense): FormValues {
     return {
-        amount: String(Number(expense.amount)),
+        amount: String(expense.amountCents / 100),
         description: expense.description,
         categoryId: expense.categoryId,
         date: new Date(expense.date).toISOString().split('T')[0],
@@ -63,7 +63,9 @@ export function AddExpenseDialog({
             setSubmitError(null);
             try {
                 const payload = {
-                    amount: parseFloat(value.amount),
+                    amountCents: value.amount
+                        ? Math.round(parseFloat(value.amount) * 100)
+                        : 0,
                     description: value.description.trim(),
                     categoryId: value.categoryId,
                     date: new Date(value.date).toISOString(),
@@ -73,7 +75,8 @@ export function AddExpenseDialog({
                 if (isEditing && expense) {
                     await updateExpense.mutateAsync({
                         id: expense.id,
-                        ...payload
+                        ...payload,
+                        reason: 'Updated via dialog'
                     });
                 } else {
                     await createExpense.mutateAsync(payload);
@@ -86,7 +89,7 @@ export function AddExpenseDialog({
                 }, 900);
             } catch (err: unknown) {
                 setSubmitError(
-                    err instanceof Error 
+                    err instanceof Error
                         ? err.message
                         : `Failed to ${isEditing ? 'update' : 'create'} expense`
                 );
@@ -380,7 +383,7 @@ export function AddExpenseDialog({
                                     type="button"
                                     onClick={handleClose}
                                     disabled={isSubmitting}
-                                    className="flex-1 px-4 py-2.5 bg-white border border-border text-text-secondary text-sm font-medium rounded-[10px] hover:bg-cream transition-colors duration-150 disabled:opacity-50"
+                                    className="flex-1 px-4 py-2.5 bg-[var(--color-surface)] border border-border text-text-secondary text-sm font-medium rounded-[10px] hover:bg-cream transition-colors duration-150 disabled:opacity-50"
                                     data-cuelume-press
                                 >
                                     Cancel

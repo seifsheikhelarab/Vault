@@ -69,7 +69,12 @@ export function InviteMemberDialog({
             setSubmitting(false);
             setTimeout(() => handleClose(), 1500);
         } catch (err: unknown) {
-            setErrors({ submit: err instanceof Error ? err.message : 'Failed to send invitation' });
+            setErrors({
+                submit:
+                    err instanceof Error
+                        ? err.message
+                        : 'Failed to send invitation'
+            });
             setSubmitting(false);
         }
     };
@@ -215,7 +220,7 @@ export function InviteMemberDialog({
                             type="button"
                             onClick={handleClose}
                             disabled={submitting}
-                            className="flex-1 px-4 py-2.5 bg-white border border-border text-text-secondary text-sm font-medium rounded-[10px] hover:bg-cream transition-colors duration-150 disabled:opacity-50"
+                            className="flex-1 px-4 py-2.5 bg-[var(--color-surface)] border border-border text-text-secondary text-sm font-medium rounded-[10px] hover:bg-cream transition-colors duration-150 disabled:opacity-50"
                             data-cuelume-press
                         >
                             Cancel

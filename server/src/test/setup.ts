@@ -159,9 +159,14 @@ afterAll(async () => {
         // but we want to be explicit about cleanup.
         if (testCategory) {
             try {
-                await db.delete(categories).where(eq(categories.id, testCategory.id));
+                await db
+                    .delete(categories)
+                    .where(eq(categories.id, testCategory.id));
             } catch (err) {
-                console.error('[test-cleanup] Failed to delete test category:', err);
+                console.error(
+                    '[test-cleanup] Failed to delete test category:',
+                    err
+                );
             }
         }
 
@@ -169,14 +174,20 @@ afterAll(async () => {
             try {
                 await authContext.test.deleteUser(testUser.id);
             } catch (err) {
-                console.error('[test-cleanup] Failed to delete test user:', err);
+                console.error(
+                    '[test-cleanup] Failed to delete test user:',
+                    err
+                );
             }
         }
         if (secondUser) {
             try {
                 await authContext.test.deleteUser(secondUser.id);
             } catch (err) {
-                console.error('[test-cleanup] Failed to delete second user:', err);
+                console.error(
+                    '[test-cleanup] Failed to delete second user:',
+                    err
+                );
             }
         }
     }

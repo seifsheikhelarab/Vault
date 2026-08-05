@@ -55,9 +55,9 @@ describe('CategoryPicker', () => {
 
     it('renders categories up to the max limit', () => {
         const cats = [
-            { id: '1', name: 'Food', icon: '🍔' },
-            { id: '2', name: 'Travel', icon: '✈️' },
-            { id: '3', name: 'Rent', icon: '🏠' }
+            { id: '1', name: 'Food' },
+            { id: '2', name: 'Travel' },
+            { id: '3', name: 'Rent' }
         ];
         mockCategories(cats);
         render(<CategoryPicker selectedId="" onSelect={vi.fn()} max={3} />, {
@@ -72,8 +72,7 @@ describe('CategoryPicker', () => {
     it('shows "+N more" when categories exceed max', () => {
         const cats = Array.from({ length: 8 }, (_, i) => ({
             id: String(i),
-            name: `Cat ${i}`,
-            icon: '📦'
+            name: `Cat ${i}`
         }));
         mockCategories(cats);
         render(<CategoryPicker selectedId="" onSelect={vi.fn()} max={6} />, {
@@ -85,8 +84,8 @@ describe('CategoryPicker', () => {
 
     it('highlights the selected category with coral styling', () => {
         const cats = [
-            { id: '1', name: 'Food', icon: '🍔' },
-            { id: '2', name: 'Travel', icon: '✈️' }
+            { id: '1', name: 'Food' },
+            { id: '2', name: 'Travel' }
         ];
         mockCategories(cats);
         render(<CategoryPicker selectedId="2" onSelect={vi.fn()} />, {
@@ -106,7 +105,7 @@ describe('CategoryPicker', () => {
 
     it('calls onSelect with the category id when clicked', () => {
         const onSelect = vi.fn();
-        const cats = [{ id: 'abc-123', name: 'Food', icon: '🍔' }];
+        const cats = [{ id: 'abc-123', name: 'Food' }];
         mockCategories(cats);
         render(<CategoryPicker selectedId="" onSelect={onSelect} />, {
             wrapper
@@ -116,13 +115,12 @@ describe('CategoryPicker', () => {
         expect(onSelect).toHaveBeenCalledWith('abc-123');
     });
 
-    it('shows a default folder icon when category has no icon', () => {
+    it('shows a name-based SVG icon for each category', () => {
         const cats = [{ id: '1', name: 'Misc' }];
         mockCategories(cats);
-        render(
-            <CategoryPicker selectedId="" onSelect={vi.fn()} />,
-            { wrapper }
-        );
+        render(<CategoryPicker selectedId="" onSelect={vi.fn()} />, {
+            wrapper
+        });
 
         // Should have an SVG (folder icon) inside the button
         const btn = screen.getByText('Misc').closest('button')!;

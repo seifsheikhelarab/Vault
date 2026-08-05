@@ -1,15 +1,36 @@
 import { describe, it, expect } from 'vitest';
 import { SettlementService } from './settlement.service';
 import { db } from '../../lib/db';
-import { settlements, groups, memberships } from '../../lib/db/schema';
-import { getTestUser, getSecondUser } from '../../test/setup';
+import {
+    settlements,
+    groups,
+    memberships,
+    expenses,
+    splits,
+    user
+} from '../../lib/db/schema';
+import { eq } from 'drizzle-orm';
+import { getTestUser, getSecondUser, getTestCategory } from '../../test/setup';
 
 const service = new SettlementService();
 
-/** DB row shape returned by the settlement service (amount is numeric→string). */
+/** DB row shape returned by the settlement service (amountCents is a number). */
 type SettlementRow = typeof settlements.$inferSelect;
 
 // ── Helpers ──────────────────────────────────────────────────────────
+
+async function auditCtxFor(userId: string) {
+    const [u] = await db
+        .select()
+        .from(user)
+        .where(eq(user.id, userId))
+        .limit(1);
+    return {
+        actorId: userId,
+        actorNameSnapshot: u?.name ?? 'Test User',
+        actorEmailSnapshot: u?.email ?? 'test@example.com'
+    };
+}
 
 async function createSocialGroup(adminId: string, memberId: string) {
     const groupId = crypto.randomUUID();
@@ -26,40 +47,117 @@ async function createSocialGroup(adminId: string, memberId: string) {
     return { id: groupId };
 }
 
+/**
+ * Creates a group where `creditorId` is owed `amountCents` by `debtorId`.
+ * Returns the group id.
+ */
+async function createGroupWithDebt(
+    creditorId: string,
+    debtorId: string,
+    amountCents: number
+) {
+    const group = await createSocialGroup(creditorId, debtorId);
+    const category = getTestCategory();
+    const [payer] = await db
+        .select()
+        .from(user)
+        .where(eq(user.id, creditorId))
+        .limit(1);
+    const expenseId = crypto.randomUUID();
+    await db.insert(expenses).values({
+        id: expenseId,
+        amountCents,
+        description: 'Debt expense',
+        categoryId: category.id,
+        userId: creditorId,
+        groupId: group.id,
+        scope: 'group',
+        date: new Date(),
+        payerNameSnapshot: payer?.name ?? 'Test User',
+        payerEmailSnapshot: payer?.email ?? 'test@example.com'
+    });
+    await db.insert(splits).values({
+        id: crypto.randomUUID(),
+        expenseId,
+        userId: debtorId,
+        amountCents,
+        userNameSnapshot: 'Debtor',
+        userEmailSnapshot: 'debtor@example.com'
+    });
+    return group;
+}
+
 // ── Tests ────────────────────────────────────────────────────────────
 
 describe('SettlementService', () => {
     // ── create ────────────────────────────────────────────────────
     describe('create', () => {
-        it('creates a settlement with correct fields', async () => {
+        it('creates a settlement without a group (no debt validation)', async () => {
             const user = getTestUser();
             const secondUser = getSecondUser();
-            const group = await createSocialGroup(user.id, secondUser.id);
 
-            const result = await service.create(user.id, {
-                toUserId: secondUser.id,
-                amount: 42.5,
-                groupId: group.id,
-                note: 'Dinner payment'
-            });
+            const result = await service.create(
+                user.id,
+                {
+                    toUserId: secondUser.id,
+                    amountCents: 4250,
+                    note: 'Dinner payment'
+                },
+                await auditCtxFor(user.id)
+            );
 
             const settlement = result as SettlementRow;
             expect(settlement.fromUserId).toBe(user.id);
             expect(settlement.toUserId).toBe(secondUser.id);
-            expect(settlement.amount).toBe('42.50');
-            expect(settlement.groupId).toBe(group.id);
+            expect(settlement.amountCents).toBe(4250);
             expect(settlement.note).toBe('Dinner payment');
             expect(settlement.id).toBeDefined();
+        });
+
+        it('rejects settling with yourself', async () => {
+            const user = getTestUser();
+
+            await expect(
+                service.create(
+                    user.id,
+                    { toUserId: user.id, amountCents: 1000 },
+                    await auditCtxFor(user.id)
+                )
+            ).rejects.toThrow('Cannot settle with yourself');
+        });
+
+        it('stores identity snapshots', async () => {
+            const user = getTestUser();
+            const secondUser = getSecondUser();
+
+            const result = await service.create(
+                user.id,
+                {
+                    toUserId: secondUser.id,
+                    amountCents: 1000
+                },
+                await auditCtxFor(user.id)
+            );
+
+            const settlement = result as SettlementRow;
+            expect(settlement.fromUserNameSnapshot).toBeTruthy();
+            expect(settlement.fromUserEmailSnapshot).toBeTruthy();
+            expect(settlement.toUserNameSnapshot).toBeTruthy();
+            expect(settlement.toUserEmailSnapshot).toBeTruthy();
         });
 
         it('creates a settlement without note or groupId', async () => {
             const user = getTestUser();
             const secondUser = getSecondUser();
 
-            const result = await service.create(user.id, {
-                toUserId: secondUser.id,
-                amount: 10
-            });
+            const result = await service.create(
+                user.id,
+                {
+                    toUserId: secondUser.id,
+                    amountCents: 1000
+                },
+                await auditCtxFor(user.id)
+            );
 
             const settlement = result as SettlementRow;
             expect(settlement.fromUserId).toBe(user.id);
@@ -67,206 +165,166 @@ describe('SettlementService', () => {
             expect(settlement.note).toBeNull();
             expect(settlement.groupId).toBeNull();
         });
+
+        it('rejects non-positive amounts', async () => {
+            const user = getTestUser();
+            const secondUser = getSecondUser();
+
+            await expect(
+                service.create(
+                    user.id,
+                    { toUserId: secondUser.id, amountCents: 0 },
+                    await auditCtxFor(user.id)
+                )
+            ).rejects.toThrow('amountCents must be positive');
+        });
+
+        it('rejects non-integer amounts', async () => {
+            const user = getTestUser();
+            const secondUser = getSecondUser();
+
+            await expect(
+                service.create(
+                    user.id,
+                    { toUserId: secondUser.id, amountCents: 10.5 },
+                    await auditCtxFor(user.id)
+                )
+            ).rejects.toThrow('amountCents must be an integer');
+        });
     });
 
     // ── list ──────────────────────────────────────────────────────
     describe('list', () => {
-        it('returns only settlements where user is the sender', async () => {
+        it('returns settlements filtered by groupId', async () => {
             const user = getTestUser();
             const secondUser = getSecondUser();
-            const group = await createSocialGroup(user.id, secondUser.id);
-            await service.create(user.id, {
-                toUserId: secondUser.id,
-                amount: 15,
-                groupId: group.id
-            });
+            const group1 = await createGroupWithDebt(user.id, secondUser.id, 3000);
+            const group2 = await createGroupWithDebt(user.id, secondUser.id, 3000);
 
-            const result = await service.list(user.id, {});
-            expect(Array.isArray(result)).toBe(true);
-            const list = result as SettlementRow[];
-            expect(list.length).toBeGreaterThanOrEqual(1);
-            list.forEach((s) => {
-                expect(s.fromUserId).toBe(user.id);
-            });
-        });
+            await service.create(
+                secondUser.id,
+                {
+                    toUserId: user.id,
+                    amountCents: 1000,
+                    groupId: group1.id
+                },
+                await auditCtxFor(secondUser.id)
+            );
+            await service.create(
+                secondUser.id,
+                {
+                    toUserId: user.id,
+                    amountCents: 2000,
+                    groupId: group2.id
+                },
+                await auditCtxFor(secondUser.id)
+            );
 
-        it('filters settlements by groupId', async () => {
-            const user = getTestUser();
-            const secondUser = getSecondUser();
-            const group1 = await createSocialGroup(user.id, secondUser.id);
-            const group2 = await createSocialGroup(user.id, secondUser.id);
-
-            await service.create(user.id, {
-                toUserId: secondUser.id,
-                amount: 10,
-                groupId: group1.id
-            });
-            await service.create(user.id, {
-                toUserId: secondUser.id,
-                amount: 20,
-                groupId: group2.id
-            });
-
-            const result = await service.list(user.id, { groupId: group1.id });
+            const result = await service.list(group1.id);
             expect(result).toHaveLength(1);
             const settlement = (result as SettlementRow[])[0];
-            expect(Number(settlement.amount)).toBe(10);
+            expect(settlement.amountCents).toBe(1000);
             expect(settlement.groupId).toBe(group1.id);
         });
 
-        it('returns empty array when user has no settlements', async () => {
+        it('returns empty array when group has no settlements', async () => {
+            const user = getTestUser();
             const secondUser = getSecondUser();
-            const result = await service.list(secondUser.id, {});
+            const group = await createSocialGroup(user.id, secondUser.id);
+            const result = await service.list(group.id);
             expect(result).toEqual([]);
         });
     });
 
-    // ── getById ───────────────────────────────────────────────────
-    describe('getById', () => {
-        it('returns null for non-existent settlement', async () => {
-            const result = await service.getById(
-                getTestUser().id,
-                'non-existent'
-            );
-            expect(result).toBeNull();
+    // ── correct ───────────────────────────────────────────────────
+    describe('correct', () => {
+        it('throws when original settlement does not exist', async () => {
+            const user = getTestUser();
+            await expect(
+                service.correct(
+                    user.id,
+                    { originalSettlementId: 'non-existent', reason: 'wrong' },
+                    await auditCtxFor(user.id)
+                )
+            ).rejects.toThrow('Original settlement not found');
         });
 
-        it('returns null when user is neither sender nor receiver', async () => {
+        it('creates an exact-inverse correction when requester is a participant', async () => {
             const user = getTestUser();
             const secondUser = getSecondUser();
-            const group = await createSocialGroup(user.id, secondUser.id);
-            const created = await service.create(user.id, {
-                toUserId: secondUser.id,
-                amount: 25,
-                groupId: group.id
-            });
+            const group = await createGroupWithDebt(user.id, secondUser.id, 3000);
 
-            const result = await service.getById(
-                'unrelated-user-id',
-                (created as SettlementRow).id
-            );
-            expect(result).toBeNull();
-        });
-
-        it('returns settlement when user is the sender', async () => {
-            const user = getTestUser();
-            const secondUser = getSecondUser();
-            const group = await createSocialGroup(user.id, secondUser.id);
-            const created = await service.create(user.id, {
-                toUserId: secondUser.id,
-                amount: 25,
-                groupId: group.id
-            });
-
-            const result = await service.getById(user.id, (created as SettlementRow).id);
-            expect(result).not.toBeNull();
-            const settlement = result as SettlementRow;
-            expect(settlement.fromUserId).toBe(user.id);
-            expect(settlement.toUserId).toBe(secondUser.id);
-            expect(Number(settlement.amount)).toBe(25);
-        });
-
-        it('returns settlement when user is the receiver', async () => {
-            const user = getTestUser();
-            const secondUser = getSecondUser();
-            const group = await createSocialGroup(user.id, secondUser.id);
-            const created = await service.create(user.id, {
-                toUserId: secondUser.id,
-                amount: 30,
-                groupId: group.id
-            });
-
-            const result = await service.getById(
+            const created = (await service.create(
                 secondUser.id,
-                (created as SettlementRow).id
+                {
+                    toUserId: user.id,
+                    amountCents: 2500,
+                    groupId: group.id
+                },
+                await auditCtxFor(secondUser.id)
+            )) as SettlementRow;
+
+            const correction = await service.correct(
+                user.id,
+                { originalSettlementId: created.id, reason: 'Wrong amount' },
+                await auditCtxFor(user.id)
             );
-            expect(result).not.toBeNull();
-            const settlement = result as SettlementRow;
-            expect(settlement.toUserId).toBe(secondUser.id);
+
+            expect(correction.originalSettlementId).toBe(created.id);
+            expect(correction.amountCents).toBe(-2500);
+            expect(correction.approved).toBe(true);
+            expect(correction.reason).toBe('Wrong amount');
+        });
+
+        it('creates a non-approved correction when requester is not a participant', async () => {
+            const user = getTestUser();
+            const secondUser = getSecondUser();
+            const group = await createGroupWithDebt(user.id, secondUser.id, 3000);
+
+            const created = (await service.create(
+                secondUser.id,
+                {
+                    toUserId: user.id,
+                    amountCents: 2500,
+                    groupId: group.id
+                },
+                await auditCtxFor(secondUser.id)
+            )) as SettlementRow;
+
+            const { createTestUser } = await import('../../test/setup');
+            const thirdUser = await createTestUser();
+
+            const correction = await service.correct(
+                thirdUser.id,
+                { originalSettlementId: created.id, reason: 'Reviewing' },
+                await auditCtxFor(thirdUser.id)
+            );
+
+            expect(correction.approved).toBe(false);
+
+            const { deleteTestUser } = await import('../../test/setup');
+            await deleteTestUser(thirdUser.id);
         });
     });
 
-    // ── Edge cases ────────────────────────────────────────────────
-    describe('edge cases', () => {
-        it('handles zero-amount settlement', async () => {
+    // ── getBalances ───────────────────────────────────────────────
+    describe('getBalances', () => {
+        it('returns empty array for group with no financial activity', async () => {
             const user = getTestUser();
             const secondUser = getSecondUser();
             const group = await createSocialGroup(user.id, secondUser.id);
 
-            const result = await service.create(user.id, {
-                toUserId: secondUser.id,
-                amount: 0,
-                groupId: group.id
-            });
-
-            const settlement = result as SettlementRow;
-            expect(settlement.amount).toBe('0.00');
-            expect(settlement.fromUserId).toBe(user.id);
+            const result = await service.getBalances(group.id);
+            expect(result).toEqual([]);
         });
 
-        it('handles overpayment settlement (amount larger than typical)', async () => {
+        it('returns balances including user names', async () => {
             const user = getTestUser();
             const secondUser = getSecondUser();
             const group = await createSocialGroup(user.id, secondUser.id);
 
-            const result = await service.create(user.id, {
-                toUserId: secondUser.id,
-                amount: 9999.99,
-                groupId: group.id,
-                note: 'Large overpayment'
-            });
-
-            const settlement = result as SettlementRow;
-            expect(settlement.amount).toBe('9999.99');
-            expect(settlement.note).toBe('Large overpayment');
-        });
-
-        it('allows duplicate settlements between same users', async () => {
-            const user = getTestUser();
-            const secondUser = getSecondUser();
-            const group = await createSocialGroup(user.id, secondUser.id);
-
-            const s1 = await service.create(user.id, {
-                toUserId: secondUser.id,
-                amount: 25,
-                groupId: group.id
-            });
-            const s2 = await service.create(user.id, {
-                toUserId: secondUser.id,
-                amount: 25,
-                groupId: group.id
-            });
-
-            expect((s1 as SettlementRow).id).not.toBe((s2 as SettlementRow).id);
-            const list = await service.list(user.id, { groupId: group.id });
-            expect(list).toHaveLength(2);
-        });
-
-        it('list excludes received settlements (only shows sender)', async () => {
-            const user = getTestUser();
-            const secondUser = getSecondUser();
-            const group = await createSocialGroup(user.id, secondUser.id);
-
-            const sent = await service.create(user.id, {
-                toUserId: secondUser.id,
-                amount: 10,
-                groupId: group.id
-            });
-            await service.create(secondUser.id, {
-                toUserId: user.id,
-                amount: 20,
-                groupId: group.id
-            });
-
-            const userList = await service.list(user.id, {});
-            (userList as SettlementRow[]).forEach((s) => {
-                expect(s.fromUserId).toBe(user.id);
-            });
-            const ours = (userList as SettlementRow[]).find(
-                (s) => s.id === (sent as SettlementRow).id
-            );
-            expect(ours).toBeDefined();
-            expect(Number(ours!.amount)).toBe(10);
+            const result = await service.getBalances(group.id);
+            expect(Array.isArray(result)).toBe(true);
         });
     });
 });

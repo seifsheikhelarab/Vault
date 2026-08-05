@@ -1,73 +1,127 @@
+import type { Context } from 'hono';
 import { ExpenseService } from './expense.service';
-import type { CreateExpenseInput, UpdateExpenseInput, ExpenseQueryInput } from './expense.schema';
+import type {
+    CreateExpenseInput,
+    ReviseExpenseInput,
+    DeleteExpenseInput
+} from './expense.schema';
+import { validBody } from '../../lib/middleware';
 import { ok, fail } from '../../lib/response';
-import { validBody, validQuery, type AppContext } from '../../lib/middleware';
+import type { AppEnv } from '../../lib/middleware';
 
 const service = new ExpenseService();
 
 export class ExpenseController {
-    async create(c: AppContext) {
+    async create(c: Context<AppEnv>) {
         const userId = c.get('userId');
+        const session = c.get('session');
         const body = validBody<CreateExpenseInput>(c);
-        const expense = await service.create(userId, body);
-        return c.json(ok(expense), 201);
+
+        try {
+            const expense = await service.create(userId, body, {
+                actorId: userId,
+                actorNameSnapshot: session.user.name,
+                actorEmailSnapshot: session.user.email
+            });
+            return c.json(ok(expense), 201);
+        } catch (err: unknown) {
+            return c.json(
+                fail(
+                    'VALIDATION_ERROR',
+                    err instanceof Error
+                        ? err.message
+                        : 'Failed to create expense'
+                ),
+                400
+            );
+        }
     }
 
-    async list(c: AppContext) {
+    async list(c: Context<AppEnv>) {
         const userId = c.get('userId');
-        const query = validQuery<ExpenseQueryInput>(c);
+        const groupId = c.req.query('groupId') ?? undefined;
+        const scope = c.req.query('scope') ?? undefined;
+        const categoryId = c.req.query('categoryId') ?? undefined;
+        const page = parseInt(c.req.query('page') ?? '1');
+        const pageSize = parseInt(c.req.query('pageSize') ?? '50');
 
-        if (query.groupId) {
-            const { db } = await import('../../lib/db');
-            const { memberships } = await import('../../lib/db/schema');
-            const { eq, and } = await import('drizzle-orm');
-            const [membership] = await db
-                .select()
-                .from(memberships)
-                .where(
-                    and(
-                        eq(memberships.groupId, query.groupId),
-                        eq(memberships.userId, userId)
-                    )
-                );
-            if (!membership) {
-                const { fail } = await import('../../lib/response');
-                return c.json(
-                    fail('FORBIDDEN', 'Not a member of this group'),
-                    403
-                );
-            }
-        }
+        const data = await service.list({
+            userId,
+            groupId,
+            scope,
+            categoryId,
+            page,
+            pageSize
+        });
+        return c.json(ok(data));
+    }
 
-        const result = await service.list(userId, query);
+    async get(c: Context<AppEnv>) {
+        const id = c.req.param('id')!;
+        const expense = await service.get(id);
+        if (!expense)
+            return c.json(fail('NOT_FOUND', 'Expense not found'), 404);
+        return c.json(ok(expense));
+    }
+
+    async getWithSplits(c: Context<AppEnv>) {
+        const id = c.req.param('id')!;
+        const result = await service.getWithSplits(id);
+        if (!result) return c.json(fail('NOT_FOUND', 'Expense not found'), 404);
         return c.json(ok(result));
     }
 
-    async getById(c: AppContext) {
+    async revise(c: Context<AppEnv>) {
         const userId = c.get('userId');
+        const session = c.get('session');
         const id = c.req.param('id')!;
-        const expense = await service.getById(userId, id);
-        if (!expense)
-            return c.json(fail('NOT_FOUND', 'Expense not found'), 404);
-        return c.json(ok(expense));
+        const body = validBody<ReviseExpenseInput>(c);
+
+        try {
+            const expense = await service.revise(id, userId, body, {
+                actorId: userId,
+                actorNameSnapshot: session.user.name,
+                actorEmailSnapshot: session.user.email
+            });
+            return c.json(ok(expense));
+        } catch (err: unknown) {
+            return c.json(
+                fail(
+                    'VALIDATION_ERROR',
+                    err instanceof Error ? err.message : 'Revision failed'
+                ),
+                400
+            );
+        }
     }
 
-    async update(c: AppContext) {
+    async delete(c: Context<AppEnv>) {
         const userId = c.get('userId');
+        const session = c.get('session');
         const id = c.req.param('id')!;
-        const body = validBody<UpdateExpenseInput>(c);
-        const expense = await service.update(userId, id, body);
-        if (!expense)
-            return c.json(fail('NOT_FOUND', 'Expense not found'), 404);
-        return c.json(ok(expense));
+        const body = validBody<DeleteExpenseInput>(c);
+
+        try {
+            const result = await service.delete(id, userId, body, {
+                actorId: userId,
+                actorNameSnapshot: session.user.name,
+                actorEmailSnapshot: session.user.email
+            });
+            return c.json(ok(result));
+        } catch (err: unknown) {
+            return c.json(
+                fail(
+                    'VALIDATION_ERROR',
+                    err instanceof Error ? err.message : 'Delete failed'
+                ),
+                400
+            );
+        }
     }
 
-    async delete(c: AppContext) {
-        const userId = c.get('userId');
+    async revisions(c: Context<AppEnv>) {
         const id = c.req.param('id')!;
-        const expense = await service.delete(userId, id);
-        if (!expense)
-            return c.json(fail('NOT_FOUND', 'Expense not found'), 404);
-        return c.json(ok({ deleted: true }));
+        const revisions = await service.getRevisions(id);
+        return c.json(ok(revisions));
     }
 }

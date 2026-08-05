@@ -52,17 +52,26 @@ function Dashboard() {
 
     const expenses = expenseData?.items ?? [];
 
-    const totalSpent = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
+    const totalSpent = expenses.reduce(
+        (sum, e) => sum + e.amountCents / 100,
+        0
+    );
     const budget = budgets.find((b) => !b.groupId);
-    const totalBudget = budget ? Number(budget.amount) : 2000;
-    const remaining = totalBudget - totalSpent;
-    const budgetPercent = Math.round((totalSpent / totalBudget) * 100);
+    const totalBudget = budget ? budget.amountCents / 100 : null;
+    const remaining = totalBudget !== null ? totalBudget - totalSpent : null;
+    const budgetPercent =
+        totalBudget !== null
+            ? Math.round((totalSpent / totalBudget) * 100)
+            : null;
 
     const categoryMap = new Map<string, number>();
     expenses.forEach((e) => {
         const cat = categories.find((c) => c.id === e.categoryId);
         const name = cat?.name ?? 'Other';
-        categoryMap.set(name, (categoryMap.get(name) ?? 0) + Number(e.amount));
+        categoryMap.set(
+            name,
+            (categoryMap.get(name) ?? 0) + e.amountCents / 100
+        );
     });
     const chartCategories = Array.from(categoryMap.entries())
         .map(([name, value], i) => ({
@@ -88,7 +97,7 @@ function Dashboard() {
         });
         return {
             day: daysOfWeek[d.getDay()],
-            amount: dayExpenses.reduce((s, e) => s + Number(e.amount), 0)
+            amount: dayExpenses.reduce((s, e) => s + e.amountCents / 100, 0)
         };
     });
     const maxBar = Math.max(...spendingByDay.map((d) => d.amount), 1);
@@ -118,7 +127,10 @@ function Dashboard() {
     }, []);
 
     const SIDE_CARDS = [
-        { label: 'Remaining', value: `$${remaining.toFixed(2)}` },
+        {
+            label: 'Remaining',
+            value: remaining !== null ? `$${remaining.toFixed(2)}` : '—'
+        },
         { label: 'Categories', value: String(chartCategories.length) },
         { label: 'Avg / day', value: `$${avgPerDay.toFixed(2)}` },
         { label: 'Top category', value: topCategory }
@@ -232,24 +244,38 @@ function Dashboard() {
                             </div>
                         ))}
                     </div>
-                    <div className="mt-5 relative z-[1]">
-                        <div className="flex items-center justify-between text-xs text-text-tertiary mb-1.5">
-                            <span>{budgetPercent}% of budget</span>
-                            <span className="font-mono">
-                                ${totalBudget.toLocaleString()}
-                            </span>
+                    {budgetPercent !== null ? (
+                        <div className="mt-5 relative z-[1]">
+                            <div className="flex items-center justify-between text-xs text-text-tertiary mb-1.5">
+                                <span>{budgetPercent}% of budget</span>
+                                <span className="font-mono">
+                                    ${totalBudget!.toLocaleString()}
+                                </span>
+                            </div>
+                            <div className="h-2.5 bg-cream rounded-full overflow-hidden">
+                                <div
+                                    className="h-full rounded-full transition-[width] duration-700 ease-out"
+                                    style={{
+                                        width: `${Math.min(budgetPercent, 100)}%`,
+                                        background:
+                                            'linear-gradient(90deg, var(--color-coral), var(--color-chart-2))'
+                                    }}
+                                />
+                            </div>
                         </div>
-                        <div className="h-2.5 bg-cream rounded-full overflow-hidden">
-                            <div
-                                className="h-full rounded-full transition-[width] duration-700 ease-out"
-                                style={{
-                                    width: `${Math.min(budgetPercent, 100)}%`,
-                                    background:
-                                        'linear-gradient(90deg, var(--color-coral), var(--color-chart-2))'
-                                }}
-                            />
+                    ) : (
+                        <div className="mt-5 relative z-[1]">
+                            <p className="text-xs text-text-tertiary">
+                                No personal budget set —{' '}
+                                <Link
+                                    to="/settings"
+                                    className="text-coral hover:text-coral-dark underline underline-offset-2 transition-colors"
+                                >
+                                    set one up
+                                </Link>
+                            </p>
                         </div>
-                    </div>
+                    )}
                 </div>
             </div>
 
@@ -646,7 +672,10 @@ function Dashboard() {
                                             ).toLocaleDateString()}
                                         </td>
                                         <td className="px-6 py-4 text-sm font-mono font-semibold text-text-primary text-right">
-                                            ${Number(expense.amount).toFixed(2)}
+                                            $
+                                            {(
+                                                expense.amountCents / 100
+                                            ).toFixed(2)}
                                         </td>
                                     </tr>
                                 );

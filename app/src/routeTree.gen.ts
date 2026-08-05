@@ -8,336 +8,336 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as CompanyRouteImport } from './routes/company'
-import { Route as DashboardRouteImport } from './routes/dashboard'
-import { Route as ExpensesRouteImport } from './routes/expenses'
-import { Route as GroupsRouteImport } from './routes/groups'
-import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as SettlementsRouteImport } from './routes/settlements'
-import { Route as SignInRouteImport } from './routes/sign-in'
-import { Route as SignUpRouteImport } from './routes/sign-up'
-import { Route as CompanyClaimsRouteImport } from './routes/company.claims'
-import { Route as ExpensesNewRouteImport } from './routes/expenses.new'
-import { Route as GroupsGroupIdRouteImport } from './routes/groups.$groupId'
-import { Route as GroupsNewRouteImport } from './routes/groups.new'
+import { Route as rootRouteImport } from './routes/__root';
+import { Route as IndexRouteImport } from './routes/index';
+import { Route as CompanyRouteImport } from './routes/company';
+import { Route as DashboardRouteImport } from './routes/dashboard';
+import { Route as ExpensesRouteImport } from './routes/expenses';
+import { Route as GroupsRouteImport } from './routes/groups';
+import { Route as SettingsRouteImport } from './routes/settings';
+import { Route as SettlementsRouteImport } from './routes/settlements';
+import { Route as SignInRouteImport } from './routes/sign-in';
+import { Route as SignUpRouteImport } from './routes/sign-up';
+import { Route as CompanyClaimsRouteImport } from './routes/company.claims';
+import { Route as ExpensesNewRouteImport } from './routes/expenses.new';
+import { Route as GroupsGroupIdRouteImport } from './routes/groups.$groupId';
+import { Route as GroupsNewRouteImport } from './routes/groups.new';
 
 const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
+    id: '/',
+    path: '/',
+    getParentRoute: () => rootRouteImport
+} as any);
 const CompanyRoute = CompanyRouteImport.update({
-  id: '/company',
-  path: '/company',
-  getParentRoute: () => rootRouteImport,
-} as any)
+    id: '/company',
+    path: '/company',
+    getParentRoute: () => rootRouteImport
+} as any);
 const DashboardRoute = DashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => rootRouteImport,
-} as any)
+    id: '/dashboard',
+    path: '/dashboard',
+    getParentRoute: () => rootRouteImport
+} as any);
 const ExpensesRoute = ExpensesRouteImport.update({
-  id: '/expenses',
-  path: '/expenses',
-  getParentRoute: () => rootRouteImport,
-} as any)
+    id: '/expenses',
+    path: '/expenses',
+    getParentRoute: () => rootRouteImport
+} as any);
 const GroupsRoute = GroupsRouteImport.update({
-  id: '/groups',
-  path: '/groups',
-  getParentRoute: () => rootRouteImport,
-} as any)
+    id: '/groups',
+    path: '/groups',
+    getParentRoute: () => rootRouteImport
+} as any);
 const SettingsRoute = SettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => rootRouteImport,
-} as any)
+    id: '/settings',
+    path: '/settings',
+    getParentRoute: () => rootRouteImport
+} as any);
 const SettlementsRoute = SettlementsRouteImport.update({
-  id: '/settlements',
-  path: '/settlements',
-  getParentRoute: () => rootRouteImport,
-} as any)
+    id: '/settlements',
+    path: '/settlements',
+    getParentRoute: () => rootRouteImport
+} as any);
 const SignInRoute = SignInRouteImport.update({
-  id: '/sign-in',
-  path: '/sign-in',
-  getParentRoute: () => rootRouteImport,
-} as any)
+    id: '/sign-in',
+    path: '/sign-in',
+    getParentRoute: () => rootRouteImport
+} as any);
 const SignUpRoute = SignUpRouteImport.update({
-  id: '/sign-up',
-  path: '/sign-up',
-  getParentRoute: () => rootRouteImport,
-} as any)
+    id: '/sign-up',
+    path: '/sign-up',
+    getParentRoute: () => rootRouteImport
+} as any);
 const CompanyClaimsRoute = CompanyClaimsRouteImport.update({
-  id: '/claims',
-  path: '/claims',
-  getParentRoute: () => CompanyRoute,
-} as any)
+    id: '/claims',
+    path: '/claims',
+    getParentRoute: () => CompanyRoute
+} as any);
 const ExpensesNewRoute = ExpensesNewRouteImport.update({
-  id: '/new',
-  path: '/new',
-  getParentRoute: () => ExpensesRoute,
-} as any)
+    id: '/new',
+    path: '/new',
+    getParentRoute: () => ExpensesRoute
+} as any);
 const GroupsGroupIdRoute = GroupsGroupIdRouteImport.update({
-  id: '/$groupId',
-  path: '/$groupId',
-  getParentRoute: () => GroupsRoute,
-} as any)
+    id: '/$groupId',
+    path: '/$groupId',
+    getParentRoute: () => GroupsRoute
+} as any);
 const GroupsNewRoute = GroupsNewRouteImport.update({
-  id: '/new',
-  path: '/new',
-  getParentRoute: () => GroupsRoute,
-} as any)
+    id: '/new',
+    path: '/new',
+    getParentRoute: () => GroupsRoute
+} as any);
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/company': typeof CompanyRouteWithChildren
-  '/dashboard': typeof DashboardRoute
-  '/expenses': typeof ExpensesRouteWithChildren
-  '/groups': typeof GroupsRouteWithChildren
-  '/settings': typeof SettingsRoute
-  '/settlements': typeof SettlementsRoute
-  '/sign-in': typeof SignInRoute
-  '/sign-up': typeof SignUpRoute
-  '/company/claims': typeof CompanyClaimsRoute
-  '/expenses/new': typeof ExpensesNewRoute
-  '/groups/$groupId': typeof GroupsGroupIdRoute
-  '/groups/new': typeof GroupsNewRoute
+    '/': typeof IndexRoute;
+    '/company': typeof CompanyRouteWithChildren;
+    '/dashboard': typeof DashboardRoute;
+    '/expenses': typeof ExpensesRouteWithChildren;
+    '/groups': typeof GroupsRouteWithChildren;
+    '/settings': typeof SettingsRoute;
+    '/settlements': typeof SettlementsRoute;
+    '/sign-in': typeof SignInRoute;
+    '/sign-up': typeof SignUpRoute;
+    '/company/claims': typeof CompanyClaimsRoute;
+    '/expenses/new': typeof ExpensesNewRoute;
+    '/groups/$groupId': typeof GroupsGroupIdRoute;
+    '/groups/new': typeof GroupsNewRoute;
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/company': typeof CompanyRouteWithChildren
-  '/dashboard': typeof DashboardRoute
-  '/expenses': typeof ExpensesRouteWithChildren
-  '/groups': typeof GroupsRouteWithChildren
-  '/settings': typeof SettingsRoute
-  '/settlements': typeof SettlementsRoute
-  '/sign-in': typeof SignInRoute
-  '/sign-up': typeof SignUpRoute
-  '/company/claims': typeof CompanyClaimsRoute
-  '/expenses/new': typeof ExpensesNewRoute
-  '/groups/$groupId': typeof GroupsGroupIdRoute
-  '/groups/new': typeof GroupsNewRoute
+    '/': typeof IndexRoute;
+    '/company': typeof CompanyRouteWithChildren;
+    '/dashboard': typeof DashboardRoute;
+    '/expenses': typeof ExpensesRouteWithChildren;
+    '/groups': typeof GroupsRouteWithChildren;
+    '/settings': typeof SettingsRoute;
+    '/settlements': typeof SettlementsRoute;
+    '/sign-in': typeof SignInRoute;
+    '/sign-up': typeof SignUpRoute;
+    '/company/claims': typeof CompanyClaimsRoute;
+    '/expenses/new': typeof ExpensesNewRoute;
+    '/groups/$groupId': typeof GroupsGroupIdRoute;
+    '/groups/new': typeof GroupsNewRoute;
 }
 export interface FileRoutesById {
-  __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/company': typeof CompanyRouteWithChildren
-  '/dashboard': typeof DashboardRoute
-  '/expenses': typeof ExpensesRouteWithChildren
-  '/groups': typeof GroupsRouteWithChildren
-  '/settings': typeof SettingsRoute
-  '/settlements': typeof SettlementsRoute
-  '/sign-in': typeof SignInRoute
-  '/sign-up': typeof SignUpRoute
-  '/company/claims': typeof CompanyClaimsRoute
-  '/expenses/new': typeof ExpensesNewRoute
-  '/groups/$groupId': typeof GroupsGroupIdRoute
-  '/groups/new': typeof GroupsNewRoute
+    __root__: typeof rootRouteImport;
+    '/': typeof IndexRoute;
+    '/company': typeof CompanyRouteWithChildren;
+    '/dashboard': typeof DashboardRoute;
+    '/expenses': typeof ExpensesRouteWithChildren;
+    '/groups': typeof GroupsRouteWithChildren;
+    '/settings': typeof SettingsRoute;
+    '/settlements': typeof SettlementsRoute;
+    '/sign-in': typeof SignInRoute;
+    '/sign-up': typeof SignUpRoute;
+    '/company/claims': typeof CompanyClaimsRoute;
+    '/expenses/new': typeof ExpensesNewRoute;
+    '/groups/$groupId': typeof GroupsGroupIdRoute;
+    '/groups/new': typeof GroupsNewRoute;
 }
 export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/company'
-    | '/dashboard'
-    | '/expenses'
-    | '/groups'
-    | '/settings'
-    | '/settlements'
-    | '/sign-in'
-    | '/sign-up'
-    | '/company/claims'
-    | '/expenses/new'
-    | '/groups/$groupId'
-    | '/groups/new'
-  fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/company'
-    | '/dashboard'
-    | '/expenses'
-    | '/groups'
-    | '/settings'
-    | '/settlements'
-    | '/sign-in'
-    | '/sign-up'
-    | '/company/claims'
-    | '/expenses/new'
-    | '/groups/$groupId'
-    | '/groups/new'
-  id:
-    | '__root__'
-    | '/'
-    | '/company'
-    | '/dashboard'
-    | '/expenses'
-    | '/groups'
-    | '/settings'
-    | '/settlements'
-    | '/sign-in'
-    | '/sign-up'
-    | '/company/claims'
-    | '/expenses/new'
-    | '/groups/$groupId'
-    | '/groups/new'
-  fileRoutesById: FileRoutesById
+    fileRoutesByFullPath: FileRoutesByFullPath;
+    fullPaths:
+        | '/'
+        | '/company'
+        | '/dashboard'
+        | '/expenses'
+        | '/groups'
+        | '/settings'
+        | '/settlements'
+        | '/sign-in'
+        | '/sign-up'
+        | '/company/claims'
+        | '/expenses/new'
+        | '/groups/$groupId'
+        | '/groups/new';
+    fileRoutesByTo: FileRoutesByTo;
+    to:
+        | '/'
+        | '/company'
+        | '/dashboard'
+        | '/expenses'
+        | '/groups'
+        | '/settings'
+        | '/settlements'
+        | '/sign-in'
+        | '/sign-up'
+        | '/company/claims'
+        | '/expenses/new'
+        | '/groups/$groupId'
+        | '/groups/new';
+    id:
+        | '__root__'
+        | '/'
+        | '/company'
+        | '/dashboard'
+        | '/expenses'
+        | '/groups'
+        | '/settings'
+        | '/settlements'
+        | '/sign-in'
+        | '/sign-up'
+        | '/company/claims'
+        | '/expenses/new'
+        | '/groups/$groupId'
+        | '/groups/new';
+    fileRoutesById: FileRoutesById;
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  CompanyRoute: typeof CompanyRouteWithChildren
-  DashboardRoute: typeof DashboardRoute
-  ExpensesRoute: typeof ExpensesRouteWithChildren
-  GroupsRoute: typeof GroupsRouteWithChildren
-  SettingsRoute: typeof SettingsRoute
-  SettlementsRoute: typeof SettlementsRoute
-  SignInRoute: typeof SignInRoute
-  SignUpRoute: typeof SignUpRoute
+    IndexRoute: typeof IndexRoute;
+    CompanyRoute: typeof CompanyRouteWithChildren;
+    DashboardRoute: typeof DashboardRoute;
+    ExpensesRoute: typeof ExpensesRouteWithChildren;
+    GroupsRoute: typeof GroupsRouteWithChildren;
+    SettingsRoute: typeof SettingsRoute;
+    SettlementsRoute: typeof SettlementsRoute;
+    SignInRoute: typeof SignInRoute;
+    SignUpRoute: typeof SignUpRoute;
 }
 
 declare module '@tanstack/react-router' {
-  interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
+    interface FileRoutesByPath {
+        '/': {
+            id: '/';
+            path: '/';
+            fullPath: '/';
+            preLoaderRoute: typeof IndexRouteImport;
+            parentRoute: typeof rootRouteImport;
+        };
+        '/company': {
+            id: '/company';
+            path: '/company';
+            fullPath: '/company';
+            preLoaderRoute: typeof CompanyRouteImport;
+            parentRoute: typeof rootRouteImport;
+        };
+        '/dashboard': {
+            id: '/dashboard';
+            path: '/dashboard';
+            fullPath: '/dashboard';
+            preLoaderRoute: typeof DashboardRouteImport;
+            parentRoute: typeof rootRouteImport;
+        };
+        '/expenses': {
+            id: '/expenses';
+            path: '/expenses';
+            fullPath: '/expenses';
+            preLoaderRoute: typeof ExpensesRouteImport;
+            parentRoute: typeof rootRouteImport;
+        };
+        '/groups': {
+            id: '/groups';
+            path: '/groups';
+            fullPath: '/groups';
+            preLoaderRoute: typeof GroupsRouteImport;
+            parentRoute: typeof rootRouteImport;
+        };
+        '/settings': {
+            id: '/settings';
+            path: '/settings';
+            fullPath: '/settings';
+            preLoaderRoute: typeof SettingsRouteImport;
+            parentRoute: typeof rootRouteImport;
+        };
+        '/settlements': {
+            id: '/settlements';
+            path: '/settlements';
+            fullPath: '/settlements';
+            preLoaderRoute: typeof SettlementsRouteImport;
+            parentRoute: typeof rootRouteImport;
+        };
+        '/sign-in': {
+            id: '/sign-in';
+            path: '/sign-in';
+            fullPath: '/sign-in';
+            preLoaderRoute: typeof SignInRouteImport;
+            parentRoute: typeof rootRouteImport;
+        };
+        '/sign-up': {
+            id: '/sign-up';
+            path: '/sign-up';
+            fullPath: '/sign-up';
+            preLoaderRoute: typeof SignUpRouteImport;
+            parentRoute: typeof rootRouteImport;
+        };
+        '/company/claims': {
+            id: '/company/claims';
+            path: '/claims';
+            fullPath: '/company/claims';
+            preLoaderRoute: typeof CompanyClaimsRouteImport;
+            parentRoute: typeof CompanyRoute;
+        };
+        '/expenses/new': {
+            id: '/expenses/new';
+            path: '/new';
+            fullPath: '/expenses/new';
+            preLoaderRoute: typeof ExpensesNewRouteImport;
+            parentRoute: typeof ExpensesRoute;
+        };
+        '/groups/$groupId': {
+            id: '/groups/$groupId';
+            path: '/$groupId';
+            fullPath: '/groups/$groupId';
+            preLoaderRoute: typeof GroupsGroupIdRouteImport;
+            parentRoute: typeof GroupsRoute;
+        };
+        '/groups/new': {
+            id: '/groups/new';
+            path: '/new';
+            fullPath: '/groups/new';
+            preLoaderRoute: typeof GroupsNewRouteImport;
+            parentRoute: typeof GroupsRoute;
+        };
     }
-    '/company': {
-      id: '/company'
-      path: '/company'
-      fullPath: '/company'
-      preLoaderRoute: typeof CompanyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/dashboard': {
-      id: '/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/expenses': {
-      id: '/expenses'
-      path: '/expenses'
-      fullPath: '/expenses'
-      preLoaderRoute: typeof ExpensesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/groups': {
-      id: '/groups'
-      path: '/groups'
-      fullPath: '/groups'
-      preLoaderRoute: typeof GroupsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/settings': {
-      id: '/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof SettingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/settlements': {
-      id: '/settlements'
-      path: '/settlements'
-      fullPath: '/settlements'
-      preLoaderRoute: typeof SettlementsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/sign-in': {
-      id: '/sign-in'
-      path: '/sign-in'
-      fullPath: '/sign-in'
-      preLoaderRoute: typeof SignInRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/sign-up': {
-      id: '/sign-up'
-      path: '/sign-up'
-      fullPath: '/sign-up'
-      preLoaderRoute: typeof SignUpRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/company/claims': {
-      id: '/company/claims'
-      path: '/claims'
-      fullPath: '/company/claims'
-      preLoaderRoute: typeof CompanyClaimsRouteImport
-      parentRoute: typeof CompanyRoute
-    }
-    '/expenses/new': {
-      id: '/expenses/new'
-      path: '/new'
-      fullPath: '/expenses/new'
-      preLoaderRoute: typeof ExpensesNewRouteImport
-      parentRoute: typeof ExpensesRoute
-    }
-    '/groups/$groupId': {
-      id: '/groups/$groupId'
-      path: '/$groupId'
-      fullPath: '/groups/$groupId'
-      preLoaderRoute: typeof GroupsGroupIdRouteImport
-      parentRoute: typeof GroupsRoute
-    }
-    '/groups/new': {
-      id: '/groups/new'
-      path: '/new'
-      fullPath: '/groups/new'
-      preLoaderRoute: typeof GroupsNewRouteImport
-      parentRoute: typeof GroupsRoute
-    }
-  }
 }
 
 interface CompanyRouteChildren {
-  CompanyClaimsRoute: typeof CompanyClaimsRoute
+    CompanyClaimsRoute: typeof CompanyClaimsRoute;
 }
 
 const CompanyRouteChildren: CompanyRouteChildren = {
-  CompanyClaimsRoute: CompanyClaimsRoute,
-}
+    CompanyClaimsRoute: CompanyClaimsRoute
+};
 
 const CompanyRouteWithChildren =
-  CompanyRoute._addFileChildren(CompanyRouteChildren)
+    CompanyRoute._addFileChildren(CompanyRouteChildren);
 
 interface ExpensesRouteChildren {
-  ExpensesNewRoute: typeof ExpensesNewRoute
+    ExpensesNewRoute: typeof ExpensesNewRoute;
 }
 
 const ExpensesRouteChildren: ExpensesRouteChildren = {
-  ExpensesNewRoute: ExpensesNewRoute,
-}
+    ExpensesNewRoute: ExpensesNewRoute
+};
 
 const ExpensesRouteWithChildren = ExpensesRoute._addFileChildren(
-  ExpensesRouteChildren,
-)
+    ExpensesRouteChildren
+);
 
 interface GroupsRouteChildren {
-  GroupsGroupIdRoute: typeof GroupsGroupIdRoute
-  GroupsNewRoute: typeof GroupsNewRoute
+    GroupsGroupIdRoute: typeof GroupsGroupIdRoute;
+    GroupsNewRoute: typeof GroupsNewRoute;
 }
 
 const GroupsRouteChildren: GroupsRouteChildren = {
-  GroupsGroupIdRoute: GroupsGroupIdRoute,
-  GroupsNewRoute: GroupsNewRoute,
-}
+    GroupsGroupIdRoute: GroupsGroupIdRoute,
+    GroupsNewRoute: GroupsNewRoute
+};
 
 const GroupsRouteWithChildren =
-  GroupsRoute._addFileChildren(GroupsRouteChildren)
+    GroupsRoute._addFileChildren(GroupsRouteChildren);
 
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
-  CompanyRoute: CompanyRouteWithChildren,
-  DashboardRoute: DashboardRoute,
-  ExpensesRoute: ExpensesRouteWithChildren,
-  GroupsRoute: GroupsRouteWithChildren,
-  SettingsRoute: SettingsRoute,
-  SettlementsRoute: SettlementsRoute,
-  SignInRoute: SignInRoute,
-  SignUpRoute: SignUpRoute,
-}
+    IndexRoute: IndexRoute,
+    CompanyRoute: CompanyRouteWithChildren,
+    DashboardRoute: DashboardRoute,
+    ExpensesRoute: ExpensesRouteWithChildren,
+    GroupsRoute: GroupsRouteWithChildren,
+    SettingsRoute: SettingsRoute,
+    SettlementsRoute: SettlementsRoute,
+    SignInRoute: SignInRoute,
+    SignUpRoute: SignUpRoute
+};
 export const routeTree = rootRouteImport
-  ._addFileChildren(rootRouteChildren)
-  ._addFileTypes<FileRouteTypes>()
+    ._addFileChildren(rootRouteChildren)
+    ._addFileTypes<FileRouteTypes>();

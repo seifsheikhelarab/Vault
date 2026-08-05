@@ -264,8 +264,9 @@ function ClaimsQueue() {
                                             <div className="flex items-center gap-3 mt-1.5 flex-wrap">
                                                 <span className="font-mono text-sm font-semibold text-text-primary">
                                                     $
-                                                    {Number(
-                                                        claim.expense.amount
+                                                    {(
+                                                        claim.expense
+                                                            .amountCents / 100
                                                     ).toFixed(2)}
                                                 </span>
                                                 <span className="text-xs text-text-tertiary">
@@ -389,7 +390,7 @@ function ClaimsQueue() {
                                     }
                                     placeholder="Why is this claim being rejected?"
                                     rows={3}
-                                    className="w-full px-4 py-2.5 bg-white border border-border rounded-[10px] text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-coral/20 focus:border-coral transition-colors duration-150 resize-none"
+                                    className="w-full px-4 py-2.5 bg-[var(--color-surface)] border border-border rounded-[10px] text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-coral/20 focus:border-coral transition-colors duration-150 resize-none"
                                 />
                             </div>
                             <div className="flex gap-3 pt-2">

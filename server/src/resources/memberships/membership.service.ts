@@ -74,7 +74,12 @@ export class MembershipService {
 
         const [member] = await db
             .insert(memberships)
-            .values({ id: crypto.randomUUID(), groupId, userId: targetUser.id, role: data.role })
+            .values({
+                id: crypto.randomUUID(),
+                groupId,
+                userId: targetUser.id,
+                role: data.role
+            })
             .returning();
         return member;
     }

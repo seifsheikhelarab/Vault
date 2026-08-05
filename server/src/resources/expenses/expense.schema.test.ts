@@ -1,14 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import {
     createExpenseSchema,
-    updateExpenseSchema,
-    expenseQuerySchema
+    reviseExpenseSchema,
+    deleteExpenseSchema
 } from './expense.schema';
 
 describe('expense schemas', () => {
     describe('createExpenseSchema', () => {
         const valid = {
-            amount: 10.5,
+            amountCents: 1050,
             description: 'Coffee',
             date: '2024-01-15T00:00:00.000Z',
             categoryId: 'cat-123'
@@ -18,9 +18,8 @@ describe('expense schemas', () => {
             const result = createExpenseSchema.safeParse(valid);
             expect(result.success).toBe(true);
             if (result.success) {
-                expect(result.data.amount).toBe(10.5);
+                expect(result.data.amountCents).toBe(1050);
                 expect(result.data.description).toBe('Coffee');
-                expect(result.data.date).toBeInstanceOf(Date);
                 expect(result.data.scope).toBe('personal');
             }
         });
@@ -32,10 +31,28 @@ describe('expense schemas', () => {
 
         it('rejects zero and negative amounts', () => {
             expect(
-                createExpenseSchema.safeParse({ ...valid, amount: 0 }).success
+                createExpenseSchema.safeParse({ ...valid, amountCents: 0 })
+                    .success
             ).toBe(false);
             expect(
-                createExpenseSchema.safeParse({ ...valid, amount: -5 }).success
+                createExpenseSchema.safeParse({ ...valid, amountCents: -500 })
+                    .success
+            ).toBe(false);
+        });
+
+        it('rejects non-integer amounts (floating point is not allowed)', () => {
+            expect(
+                createExpenseSchema.safeParse({ ...valid, amountCents: 10.5 })
+                    .success
+            ).toBe(false);
+        });
+
+        it('rejects amounts above the business maximum', () => {
+            expect(
+                createExpenseSchema.safeParse({
+                    ...valid,
+                    amountCents: 100_000_001
+                }).success
             ).toBe(false);
         });
 
@@ -73,45 +90,63 @@ describe('expense schemas', () => {
             });
             expect(result.success).toBe(true);
         });
-    });
 
-    describe('updateExpenseSchema', () => {
-        it('accepts partial updates', () => {
-            const result = updateExpenseSchema.safeParse({
-                description: 'Updated'
+        it('accepts splits that sum with the expense', () => {
+            const result = createExpenseSchema.safeParse({
+                ...valid,
+                splits: [
+                    { userId: 'u1', amountCents: 600 },
+                    { userId: 'u2', amountCents: 450 }
+                ]
             });
             expect(result.success).toBe(true);
+        });
+
+        it('rejects negative split amounts', () => {
+            const result = createExpenseSchema.safeParse({
+                ...valid,
+                splits: [{ userId: 'u1', amountCents: -1 }]
+            });
+            expect(result.success).toBe(false);
+        });
+    });
+
+    describe('reviseExpenseSchema', () => {
+        const valid = {
+            amountCents: 2500,
+            description: 'Updated lunch',
+            categoryId: 'cat-123',
+            reason: 'Split was wrong'
+        };
+
+        it('accepts a valid revision', () => {
+            const result = reviseExpenseSchema.safeParse(valid);
+            expect(result.success).toBe(true);
+        });
+
+        it('rejects revisions without a reason', () => {
+            expect(
+                reviseExpenseSchema.safeParse({ ...valid, reason: '' }).success
+            ).toBe(false);
         });
 
         it('rejects invalid partial updates', () => {
-            expect(updateExpenseSchema.safeParse({ amount: -1 }).success).toBe(
-                false
-            );
+            expect(
+                reviseExpenseSchema.safeParse({ ...valid, amountCents: -1 })
+                    .success
+            ).toBe(false);
         });
     });
 
-    describe('expenseQuerySchema', () => {
-        it('applies defaults', () => {
-            const result = expenseQuerySchema.safeParse({});
-            expect(result.success).toBe(true);
-            if (result.success) {
-                expect(result.data.page).toBe(1);
-                expect(result.data.pageSize).toBe(20);
-            }
-        });
-
-        it('parses numeric query params', () => {
-            const result = expenseQuerySchema.safeParse({
-                page: '2',
-                pageSize: '50'
-            });
-            expect(result.success && result.data.page).toBe(2);
-            expect(result.success && result.data.pageSize).toBe(50);
-        });
-
-        it('caps page size at 100', () => {
-            const result = expenseQuerySchema.safeParse({ pageSize: 200 });
-            expect(result.success).toBe(false);
+    describe('deleteExpenseSchema', () => {
+        it('requires a reason', () => {
+            expect(deleteExpenseSchema.safeParse({ reason: '' }).success).toBe(
+                false
+            );
+            expect(
+                deleteExpenseSchema.safeParse({ reason: 'Entered by mistake' })
+                    .success
+            ).toBe(true);
         });
     });
 });

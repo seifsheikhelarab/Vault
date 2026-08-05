@@ -83,7 +83,7 @@ function NewGroup() {
                         onChange={(e) => setName(e.target.value)}
                         placeholder="e.g. Roommates, Trip to Tokyo"
                         autoFocus
-                        className="w-full px-4 py-2.5 bg-white border-b border-border text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-coral transition-colors duration-200"
+                        className="w-full px-4 py-2.5 bg-[var(--color-surface)] border-b border-border text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-coral transition-colors duration-200"
                     />
                 </div>
 
@@ -101,7 +101,7 @@ function NewGroup() {
                                 className={`flex-1 py-2.5 px-4 rounded-[10px] text-sm font-medium border transition-colors duration-150 ${
                                     kind === opt
                                         ? 'border-coral bg-coral-light/30 text-coral'
-                                        : 'border-border-light bg-white text-text-secondary hover:bg-cream/50'
+                                        : 'border-border-light bg-[var(--color-surface)] text-text-secondary hover:bg-cream/50'
                                 }`}
                             >
                                 {opt === 'social' ? 'Social' : 'Department'}

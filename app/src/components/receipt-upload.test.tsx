@@ -133,10 +133,9 @@ describe('ReceiptUpload', () => {
     });
 
     it('shows error for files larger than 10MB', async () => {
-        render(
-            <ReceiptUpload value={undefined} onChange={vi.fn()} />,
-            { wrapper }
-        );
+        render(<ReceiptUpload value={undefined} onChange={vi.fn()} />, {
+            wrapper
+        });
         const input = document.querySelector('input[type="file"]')!;
 
         // Create a mock file with size > 10MB
@@ -155,10 +154,9 @@ describe('ReceiptUpload', () => {
 
     it('shows a loading spinner during upload', () => {
         mockUpload('pending');
-        render(
-            <ReceiptUpload value={undefined} onChange={vi.fn()} />,
-            { wrapper }
-        );
+        render(<ReceiptUpload value={undefined} onChange={vi.fn()} />, {
+            wrapper
+        });
         expect(screen.getByText('Uploading receipt...')).toBeDefined();
     });
 });

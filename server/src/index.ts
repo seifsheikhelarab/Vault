@@ -15,6 +15,7 @@ import settlementRouter from './resources/settlements/settlement.router';
 import categoryRouter from './resources/categories/category.router';
 import budgetRouter from './resources/budgets/budget.router';
 import claimRouter from './resources/claims/claim.router';
+import adjustmentRouter from './resources/adjustments/adjustment.router';
 import uploadRouter from './resources/uploads/upload.router';
 import userRouter from './resources/users/user.router';
 
@@ -65,6 +66,7 @@ api.route('/settlements', settlementRouter);
 api.route('/categories', categoryRouter);
 api.route('/budgets', budgetRouter);
 api.route('/claims', claimRouter);
+api.route('/adjustments', adjustmentRouter);
 api.route('/uploads', uploadRouter);
 api.route('/users', userRouter);
 

@@ -27,7 +27,7 @@ describe('Expenses API', () => {
             const res = await app.request('/api/expenses', {
                 method: 'POST',
                 body: JSON.stringify({
-                    amount: 10,
+                    amountCents: 1000,
                     description: 'Test expense',
                     categoryId: category.id,
                     date: new Date().toISOString()
@@ -53,7 +53,7 @@ describe('Expenses API', () => {
                 method: 'POST',
                 headers: getAuthHeaders(user.id),
                 body: JSON.stringify({
-                    amount: -10,
+                    amountCents: -1000,
                     description: 'Negative amount',
                     categoryId: category.id,
                     date: new Date().toISOString()
@@ -69,7 +69,7 @@ describe('Expenses API', () => {
                 method: 'POST',
                 headers: getAuthHeaders(user.id),
                 body: JSON.stringify({
-                    amount: 10,
+                    amountCents: 1000,
                     description: '',
                     categoryId: category.id,
                     date: new Date().toISOString()
@@ -86,7 +86,7 @@ describe('Expenses API', () => {
                 method: 'POST',
                 headers: getAuthHeaders(user.id),
                 body: JSON.stringify({
-                    amount: 42.5,
+                    amountCents: 4250,
                     description: 'Lunch meeting',
                     categoryId: category.id,
                     date,
@@ -97,7 +97,7 @@ describe('Expenses API', () => {
             const body = await res.json();
             expect(body.success).toBe(true);
             expect(body.data).toBeDefined();
-            expect(body.data.amount).toBe('42.50');
+            expect(body.data.amountCents).toBe(4250);
             expect(body.data.description).toBe('Lunch meeting');
             expect(body.data.userId).toBe(user.id);
             expect(body.data.scope).toBe('personal');

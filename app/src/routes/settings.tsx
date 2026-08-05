@@ -47,7 +47,9 @@ function Settings() {
     const [newCategoryName, setNewCategoryName] = useState('');
     const [editingCategory, setEditingCategory] = useState<string | null>(null);
     const [editCategoryName, setEditCategoryName] = useState('');
-    const [deletingCategory, setDeletingCategory] = useState<string | null>(null);
+    const [deletingCategory, setDeletingCategory] = useState<string | null>(
+        null
+    );
 
     // Delete account state
     const [showDeleteAccount, setShowDeleteAccount] = useState(false);
@@ -86,7 +88,7 @@ function Settings() {
     expenses.forEach((e) => {
         spentMap.set(
             e.categoryId,
-            (spentMap.get(e.categoryId) ?? 0) + Number(e.amount)
+            (spentMap.get(e.categoryId) ?? 0) + e.amountCents / 100
         );
     });
 
@@ -116,7 +118,7 @@ function Settings() {
         createBudget.mutate(
             {
                 categoryId: budgetCategoryId,
-                amount: parseFloat(budgetAmount),
+                amountCents: Math.round(parseFloat(budgetAmount) * 100),
                 period: budgetPeriod,
                 groupId: budgetDepartmentId || undefined
             },
@@ -182,7 +184,15 @@ function Settings() {
                         }}
                         size="sm"
                         icon={
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                            <svg
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2.5"
+                                strokeLinecap="round"
+                            >
                                 <line x1="12" y1="5" x2="12" y2="19" />
                                 <line x1="5" y1="12" x2="19" y2="12" />
                             </svg>
@@ -216,11 +226,14 @@ function Settings() {
                             onChange={(e) => setNewCategoryName(e.target.value)}
                             placeholder="Category name"
                             autoFocus
-                            className="flex-1 px-3 py-2 bg-white border border-border rounded-[8px] text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-coral/20 focus:border-coral transition-colors duration-150"
+                            className="flex-1 px-3 py-2 bg-[var(--color-surface)] border border-border rounded-[8px] text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-coral/20 focus:border-coral transition-colors duration-150"
                         />
                         <button
                             type="submit"
-                            disabled={!newCategoryName.trim() || createCategory.isPending}
+                            disabled={
+                                !newCategoryName.trim() ||
+                                createCategory.isPending
+                            }
                             className="px-3 py-2 bg-coral text-white text-sm font-medium rounded-[8px] hover:bg-coral-dark active:scale-[0.98] transition-all duration-150 disabled:opacity-50 shrink-0"
                             data-cuelume-press
                         >
@@ -235,7 +248,15 @@ function Settings() {
                             className="p-2 text-text-tertiary hover:text-text-primary transition-colors shrink-0"
                             data-cuelume-press
                         >
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                            <svg
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                            >
                                 <line x1="18" y1="6" x2="6" y2="18" />
                                 <line x1="6" y1="6" x2="18" y2="18" />
                             </svg>
@@ -259,11 +280,16 @@ function Settings() {
                                     <form
                                         onSubmit={(e) => {
                                             e.preventDefault();
-                                            if (!editCategoryName.trim()) return;
+                                            if (!editCategoryName.trim())
+                                                return;
                                             updateCategory.mutate(
-                                                { id: cat.id, name: editCategoryName.trim() },
                                                 {
-                                                    onSuccess: () => setEditingCategory(null)
+                                                    id: cat.id,
+                                                    name: editCategoryName.trim()
+                                                },
+                                                {
+                                                    onSuccess: () =>
+                                                        setEditingCategory(null)
                                                 }
                                             );
                                         }}
@@ -272,20 +298,29 @@ function Settings() {
                                         <input
                                             type="text"
                                             value={editCategoryName}
-                                            onChange={(e) => setEditCategoryName(e.target.value)}
+                                            onChange={(e) =>
+                                                setEditCategoryName(
+                                                    e.target.value
+                                                )
+                                            }
                                             autoFocus
-                                            className="flex-1 px-2 py-1 bg-white border border-border rounded-[6px] text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-coral/20 focus:border-coral"
+                                            className="flex-1 px-2 py-1 bg-[var(--color-surface)] border border-border rounded-[6px] text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-coral/20 focus:border-coral"
                                         />
                                         <button
                                             type="submit"
-                                            disabled={!editCategoryName.trim() || updateCategory.isPending}
+                                            disabled={
+                                                !editCategoryName.trim() ||
+                                                updateCategory.isPending
+                                            }
                                             className="text-xs font-medium text-coral hover:text-coral-dark transition-colors shrink-0"
                                         >
                                             Save
                                         </button>
                                         <button
                                             type="button"
-                                            onClick={() => setEditingCategory(null)}
+                                            onClick={() =>
+                                                setEditingCategory(null)
+                                            }
                                             className="text-xs text-text-tertiary hover:text-text-secondary transition-colors shrink-0"
                                         >
                                             Cancel
@@ -300,20 +335,41 @@ function Settings() {
                                             <IconButton
                                                 onClick={() => {
                                                     setEditingCategory(cat.id);
-                                                    setEditCategoryName(cat.name);
+                                                    setEditCategoryName(
+                                                        cat.name
+                                                    );
                                                 }}
                                                 ariaLabel="Rename category"
                                             >
-                                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <svg
+                                                    width="13"
+                                                    height="13"
+                                                    viewBox="0 0 24 24"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    strokeWidth="2"
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                >
                                                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                                                     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                                                 </svg>
                                             </IconButton>
                                             <IconButton
-                                                onClick={() => setDeletingCategory(cat.id)}
+                                                onClick={() =>
+                                                    setDeletingCategory(cat.id)
+                                                }
                                                 ariaLabel="Delete category"
                                             >
-                                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                                                <svg
+                                                    width="13"
+                                                    height="13"
+                                                    viewBox="0 0 24 24"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    strokeWidth="2"
+                                                    strokeLinecap="round"
+                                                >
                                                     <polyline points="3 6 5 6 21 6" />
                                                     <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
                                                 </svg>
@@ -338,7 +394,15 @@ function Settings() {
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div className="w-12 h-12 rounded-full bg-error/10 flex items-center justify-center mb-4 mx-auto">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FF3B30" strokeWidth="2" strokeLinecap="round">
+                            <svg
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="#FF3B30"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                            >
                                 <circle cx="12" cy="12" r="10" />
                                 <line x1="12" y1="8" x2="12" y2="12" />
                                 <line x1="12" y1="16" x2="12.01" y2="16" />
@@ -361,14 +425,17 @@ function Settings() {
                             <button
                                 onClick={() => {
                                     deleteCategory.mutate(deletingCategory, {
-                                        onSettled: () => setDeletingCategory(null)
+                                        onSettled: () =>
+                                            setDeletingCategory(null)
                                     });
                                 }}
                                 disabled={deleteCategory.isPending}
                                 data-cuelume-press
                                 className="flex-1 px-4 py-2.5 bg-error text-white text-sm font-medium rounded-[10px] hover:bg-error/80 active:scale-[0.98] transition-all duration-200 disabled:opacity-50"
                             >
-                                {deleteCategory.isPending ? 'Deleting...' : 'Delete'}
+                                {deleteCategory.isPending
+                                    ? 'Deleting...'
+                                    : 'Delete'}
                             </button>
                         </div>
                     </div>
@@ -457,28 +524,11 @@ function Settings() {
                                     onChange={(e) =>
                                         setBudgetCategoryId(e.target.value)
                                     }
-                                    className="w-full px-3 py-2 bg-white border border-border rounded-[8px] text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-coral/20 focus:border-coral transition-colors duration-150"
+                                    className="w-full px-3 py-2 bg-[var(--color-surface)] border border-border rounded-[8px] text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-coral/20 focus:border-coral transition-colors duration-150"
                                 >
                                     <option value="">Select...</option>
                                     {categoriesWithoutBudget.map((c) => (
                                         <option key={c.id} value={c.id}>
-                                            {c.icon ? (
-                                                <span>{c.icon}</span>
-                                            ) : (
-                                                <svg
-                                                    width="14"
-                                                    height="14"
-                                                    viewBox="0 0 24 24"
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    strokeWidth="2"
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                    className="inline-block -mt-0.5"
-                                                >
-                                                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-                                                </svg>
-                                            )}{' '}
                                             {c.name}
                                         </option>
                                     ))}
@@ -508,7 +558,7 @@ function Settings() {
                                     onChange={(e) =>
                                         setBudgetAmount(e.target.value)
                                     }
-                                    className="w-full px-3 py-2 bg-white border border-border rounded-[8px] text-sm font-mono text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-coral/20 focus:border-coral transition-colors duration-150"
+                                    className="w-full px-3 py-2 bg-[var(--color-surface)] border border-border rounded-[8px] text-sm font-mono text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-coral/20 focus:border-coral transition-colors duration-150"
                                 />
                                 {budgetErrors.amount && (
                                     <p className="text-xs text-error mt-1">
@@ -556,7 +606,7 @@ function Settings() {
                                     onChange={(e) =>
                                         setBudgetDepartmentId(e.target.value)
                                     }
-                                    className="w-full px-3 py-2 bg-white border border-border rounded-[8px] text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-coral/20 focus:border-coral transition-colors duration-150"
+                                    className="w-full px-3 py-2 bg-[var(--color-surface)] border border-border rounded-[8px] text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-coral/20 focus:border-coral transition-colors duration-150"
                                 >
                                     <option value="">Personal (default)</option>
                                     {departments.map((d) => (
@@ -634,7 +684,7 @@ function Settings() {
                                 ? deptMap.get(budget.groupId)
                                 : null;
                             const spent = spentMap.get(budget.categoryId) ?? 0;
-                            const budgetAmt = Number(budget.amount);
+                            const budgetAmt = budget.amountCents / 100;
                             const pct =
                                 budgetAmt > 0
                                     ? Math.min((spent / budgetAmt) * 100, 100)
@@ -652,14 +702,18 @@ function Settings() {
                                                     parseFloat(
                                                         editBudgetAmount
                                                     );
-                                                if (!editBudgetAmount || newAmt <= 0)
+                                                if (
+                                                    !editBudgetAmount ||
+                                                    newAmt <= 0
+                                                )
                                                     return;
                                                 updateBudget.mutate(
                                                     {
                                                         id: budget.id,
-                                                        amount: newAmt,
-                                                        period:
-                                                            editBudgetPeriod
+                                                        amountCents: Math.round(
+                                                            newAmt * 100
+                                                        ),
+                                                        period: editBudgetPeriod
                                                     },
                                                     {
                                                         onSuccess: () =>
@@ -685,7 +739,7 @@ function Settings() {
                                                     )
                                                 }
                                                 autoFocus
-                                                className="w-20 px-2 py-1 bg-white border border-border rounded-[6px] text-sm font-mono text-text-primary focus:outline-none focus:ring-2 focus:ring-coral/20 focus:border-coral"
+                                                className="w-20 px-2 py-1 bg-[var(--color-surface)] border border-border rounded-[6px] text-sm font-mono text-text-primary focus:outline-none focus:ring-2 focus:ring-coral/20 focus:border-coral"
                                             />
                                             <div className="flex gap-1 p-0.5 bg-cream/60 dark:bg-white/[0.06] rounded-[6px]">
                                                 {(
@@ -753,8 +807,7 @@ function Settings() {
                                             <div className="flex items-center gap-2">
                                                 <span className="text-text-secondary text-xs">
                                                     <span className="font-mono">
-                                                        $
-                                                        {spent.toFixed(0)}
+                                                        ${spent.toFixed(0)}
                                                     </span>{' '}
                                                     /{' '}
                                                     <span className="font-mono">
@@ -762,8 +815,7 @@ function Settings() {
                                                         {budgetAmt.toLocaleString()}
                                                     </span>{' '}
                                                     (
-                                                    {budget.period ===
-                                                    'monthly'
+                                                    {budget.period === 'monthly'
                                                         ? 'mo'
                                                         : budget.period ===
                                                             'weekly'
@@ -995,8 +1047,8 @@ function Settings() {
                         Delete Account
                     </button>
                     <p className="text-xs text-text-tertiary mt-2">
-                        Permanently delete your account and all associated
-                        data. This cannot be undone.
+                        Permanently delete your account and all associated data.
+                        This cannot be undone.
                     </p>
                 </div>
             </div>
@@ -1005,14 +1057,24 @@ function Settings() {
             {showDeleteAccount && (
                 <div
                     className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm"
-                    onClick={() => !deletingAccount && setShowDeleteAccount(false)}
+                    onClick={() =>
+                        !deletingAccount && setShowDeleteAccount(false)
+                    }
                 >
                     <div
                         className="bg-surface rounded-[16px] shadow-warm-lg border border-border-light p-6 w-full max-w-sm mx-4"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div className="w-12 h-12 rounded-full bg-error/10 flex items-center justify-center mb-4 mx-auto">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FF3B30" strokeWidth="2" strokeLinecap="round">
+                            <svg
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="#FF3B30"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                            >
                                 <circle cx="12" cy="12" r="10" />
                                 <line x1="12" y1="8" x2="12" y2="12" />
                                 <line x1="12" y1="16" x2="12.01" y2="16" />
@@ -1038,7 +1100,8 @@ function Settings() {
                             <button
                                 onClick={async () => {
                                     setDeletingAccount(true);
-                                    const { error } = await authClient.deleteUser();
+                                    const { error } =
+                                        await authClient.deleteUser();
                                     if (error) {
                                         setDeletingAccount(false);
                                         return;
@@ -1049,7 +1112,9 @@ function Settings() {
                                 data-cuelume-press
                                 className="flex-1 px-4 py-2.5 bg-error text-white text-sm font-medium rounded-[10px] hover:bg-error/80 active:scale-[0.98] transition-all duration-200 disabled:opacity-50"
                             >
-                                {deletingAccount ? 'Deleting...' : 'Delete Forever'}
+                                {deletingAccount
+                                    ? 'Deleting...'
+                                    : 'Delete Forever'}
                             </button>
                         </div>
                     </div>

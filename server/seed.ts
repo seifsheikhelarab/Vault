@@ -14,31 +14,30 @@ const client = postgres(url);
 const db = drizzle(client, { schema });
 
 const DEFAULT_CATEGORIES = [
-    { name: 'Food', icon: null },
-    { name: 'Transport', icon: null },
-    { name: 'Entertainment', icon: null },
-    { name: 'Utilities', icon: null },
-    { name: 'Health', icon: null },
-    { name: 'Shopping', icon: null }
+    'Food',
+    'Transport',
+    'Entertainment',
+    'Utilities',
+    'Health',
+    'Shopping'
 ];
 
 async function seed() {
     console.log('Seeding categories...');
-    for (const cat of DEFAULT_CATEGORIES) {
+    for (const name of DEFAULT_CATEGORIES) {
         const existing = await db
             .select()
             .from(schema.categories)
-            .where(eq(schema.categories.name, cat.name))
+            .where(eq(schema.categories.name, name))
             .limit(1);
         if (existing.length === 0) {
             await db.insert(schema.categories).values({
                 id: crypto.randomUUID(),
-                name: cat.name,
-                icon: cat.icon
+                name
             });
-            console.log(`  Created: ${cat.name}`);
+            console.log(`  Created: ${name}`);
         } else {
-            console.log(`  Exists: ${cat.name}`);
+            console.log(`  Exists: ${name}`);
         }
     }
     console.log('Done.');

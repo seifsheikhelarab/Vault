@@ -1,4 +1,10 @@
-import { createFileRoute, Link, Outlet, redirect, useLocation } from '@tanstack/react-router';
+import {
+    createFileRoute,
+    Link,
+    Outlet,
+    redirect,
+    useLocation
+} from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { useGroups } from '../lib/hooks';
 import { authClient } from '../lib/auth-client';

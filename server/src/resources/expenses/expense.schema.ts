@@ -1,30 +1,51 @@
 import * as z from 'zod';
 
 export const createExpenseSchema = z.object({
-    amount: z.number().positive(),
-    description: z.string().min(1).max(200),
-    date: z
-        .string()
-        .datetime()
-        .transform((d) => new Date(d)),
-    categoryId: z.string(),
-    receiptUrl: z.string().url().optional(),
+    amountCents: z
+        .number()
+        .int('amountCents must be an integer (cents)')
+        .positive('amountCents must be positive')
+        .max(100_000_000, 'amountCents exceeds business maximum'),
+    description: z.string().min(1).max(500),
+    categoryId: z.string().min(1),
+    date: z.string().datetime(),
+    scope: z
+        .enum(['personal', 'group', 'company'])
+        .optional()
+        .default('personal'),
     groupId: z.string().optional(),
-    scope: z.enum(['personal', 'group', 'company']).default('personal')
+    receiptUrl: z.string().url().optional(),
+    splits: z
+        .array(
+            z.object({
+                userId: z.string().min(1),
+                amountCents: z
+                    .number()
+                    .int('amountCents must be an integer (cents)')
+                    .min(0, 'Split amount cannot be negative')
+            })
+        )
+        .optional()
 });
 
-export const updateExpenseSchema = createExpenseSchema.partial();
+export const reviseExpenseSchema = z.object({
+    amountCents: z
+        .number()
+        .int('amountCents must be an integer (cents)')
+        .positive('amountCents must be positive')
+        .max(100_000_000, 'amountCents exceeds business maximum'),
+    description: z.string().min(1).max(500),
+    categoryId: z.string().min(1),
+    reason: z.string().min(1).max(500)
+});
 
-export const expenseQuerySchema = z.object({
-    page: z.coerce.number().int().positive().default(1),
-    pageSize: z.coerce.number().int().positive().max(100).default(20),
-    categoryId: z.string().optional(),
-    scope: z.enum(['personal', 'group', 'company']).optional(),
-    groupId: z.string().optional(),
-    from: z.string().datetime().optional(),
-    to: z.string().datetime().optional()
+export const deleteExpenseSchema = z.object({
+    reason: z.string().min(1).max(500)
 });
 
 export type CreateExpenseInput = z.infer<typeof createExpenseSchema>;
-export type UpdateExpenseInput = z.infer<typeof updateExpenseSchema>;
-export type ExpenseQueryInput = z.infer<typeof expenseQuerySchema>;
+export type ReviseExpenseInput = z.infer<typeof reviseExpenseSchema>;
+export type DeleteExpenseInput = z.infer<typeof deleteExpenseSchema>;
+export type CreateSplitInput = NonNullable<
+    z.infer<typeof createExpenseSchema>['splits']
+>[number];

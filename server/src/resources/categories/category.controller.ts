@@ -1,5 +1,8 @@
 import { CategoryService } from './category.service';
-import type { CreateCategoryInput, UpdateCategoryInput } from './category.schema';
+import type {
+    CreateCategoryInput,
+    UpdateCategoryInput
+} from './category.schema';
 import { ok, fail } from '../../lib/response';
 import { validBody, type AppContext } from '../../lib/middleware';
 
@@ -36,7 +39,10 @@ export class CategoryController {
         if ('error' in result && result.error === 'FORBIDDEN')
             return c.json(fail('FORBIDDEN', 'Not your category'), 403);
         if ('error' in result && result.error === 'IN_USE')
-            return c.json(fail('CONFLICT', 'Category has expenses — reassign them first'), 409);
+            return c.json(
+                fail('CONFLICT', 'Category has expenses — reassign them first'),
+                409
+            );
         return c.json(ok({ deleted: true }));
     }
 }

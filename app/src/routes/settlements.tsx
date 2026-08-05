@@ -81,7 +81,7 @@ function SettlementsList() {
                                         </p>
                                     </div>
                                     <span className="font-mono font-semibold text-sm text-text-primary">
-                                        ${Number(s.amount).toFixed(2)}
+                                        ${(s.amountCents / 100).toFixed(2)}
                                     </span>
                                 </div>
                             </div>
