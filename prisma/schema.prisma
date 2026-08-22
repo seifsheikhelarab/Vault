@@ -1,0 +1,161 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+enum PeriodType {
+  week
+  month
+}
+
+enum Frequency {
+  daily
+  weekly
+  monthly
+}
+
+model User {
+  id            String    @id
+  name          String
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  image         String?
+  timeZone      String    @default("Africa/Cairo")
+  createdAt     DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime  @updatedAt @db.Timestamptz(3)
+  sessions      Session[]
+  accounts      Account[]
+  categories    Category[]
+  expenses      Expense[]
+  budgets       Budget[]
+  recurring     RecurringDefinition[]
+
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime @db.Timestamptz(3)
+  token     String   @unique
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  issuer                String?
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime? @db.Timestamptz(3)
+  refreshTokenExpiresAt DateTime? @db.Timestamptz(3)
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime  @updatedAt @db.Timestamptz(3)
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime @db.Timestamptz(3)
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+model Category {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String
+  name      String
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expenses  Expense[]
+  budgets   Budget[]
+  recurring RecurringDefinition[]
+
+  @@unique([userId, name])
+  @@map("category")
+}
+
+model Expense {
+  id                    String    @id @db.Uuid
+  userId                String
+  amountMinor           BigInt
+  currency              String    @default("EGP")
+  categoryId            String?   @db.Uuid
+  occurredAt            DateTime  @db.Timestamptz(3)
+  note                  String?
+  createdAt             DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime  @updatedAt @db.Timestamptz(3)
+  deletedAt             DateTime? @db.Timestamptz(3)
+  recurringDefinitionId String?   @db.Uuid
+  occurrenceDate        DateTime? @db.Date
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category              Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  recurringDefinition   RecurringDefinition? @relation(fields: [recurringDefinitionId], references: [id], onDelete: SetNull)
+
+  @@index([userId, occurredAt(sort: Desc), id(sort: Desc)])
+  // ponytail: NULLS DISTINCT means manual expenses (both cols null) never collide; tombstoned
+  // recurring expenses keep their (definitionId, date) row so catch-up cannot resurrect them.
+  @@unique([recurringDefinitionId, occurrenceDate], map: "expense_recurring_occurrence_key")
+  @@map("expense")
+}
+
+model Budget {
+  id          String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId      String
+  periodType  PeriodType
+  amountMinor BigInt
+  categoryId  String?    @db.Uuid
+  createdAt   DateTime   @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime   @updatedAt @db.Timestamptz(3)
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category    Category?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@map("budget")
+}
+
+model RecurringDefinition {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name               String
+  amountMinor        BigInt
+  currency           String    @default("EGP")
+  categoryId         String?   @db.Uuid
+  frequency          Frequency
+  interval           Int       @default(1)
+  anchorDate         DateTime  @db.Date
+  nextRunAt          DateTime  @db.Timestamptz(3)
+  paused             Boolean   @default(false)
+  lastMaterializedAt DateTime? @db.Timestamptz(3)
+  userId             String
+  createdAt          DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime  @updatedAt @db.Timestamptz(3)
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category           Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  expenses           Expense[]
+
+  @@map("recurring_definition")
+}
