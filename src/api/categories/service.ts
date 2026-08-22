@@ -1,5 +1,6 @@
 import { HTTPException } from 'hono/http-exception'
 import { Prisma, type PrismaClient } from '../../generated/prisma/client'
+import { deleteOwnedOr404, findOwnedOr404 } from '../../utils/ownership'
 
 /**
  * Categories service (ticket #6). All queries are scoped by userId; a missing
@@ -52,14 +53,8 @@ export async function listCategories(db: PrismaClient, userId: string) {
   })
 }
 
-async function findOwned(db: PrismaClient, userId: string, id: string) {
-  const category = await db.category.findFirst({ where: { id, userId } })
-  if (!category) throw new HTTPException(404)
-  return category
-}
-
 export async function getCategory(db: PrismaClient, userId: string, id: string) {
-  return await findOwned(db, userId, id)
+  return await findOwnedOr404(db.category, userId, id)
 }
 
 export async function updateCategory(
@@ -68,7 +63,7 @@ export async function updateCategory(
   id: string,
   input: { name: string },
 ) {
-  await findOwned(db, userId, id)
+  await findOwnedOr404(db.category, userId, id)
   try {
     return await db.category.update({ where: { id }, data: { name: input.name } })
   } catch (error) {
@@ -83,6 +78,5 @@ export async function updateCategory(
  * no soft-delete layer added on top.
  */
 export async function deleteCategory(db: PrismaClient, userId: string, id: string): Promise<void> {
-  const result = await db.category.deleteMany({ where: { id, userId } })
-  if (result.count === 0) throw new HTTPException(404)
+  await deleteOwnedOr404(db.category, userId, id)
 }

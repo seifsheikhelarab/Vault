@@ -1,5 +1,9 @@
 import { HTTPException } from 'hono/http-exception'
 import { Prisma, type PrismaClient } from '../../generated/prisma/client'
+import {
+  assertCategoryOwned,
+  serializeAmountMinor,
+} from '../../utils/ownership'
 import type { CreateExpenseInput, ListExpensesQuery, UpdateExpenseInput } from './validation'
 
 /**
@@ -11,20 +15,6 @@ import type { CreateExpenseInput, ListExpensesQuery, UpdateExpenseInput } from '
  */
 
 type ExpenseRow = Prisma.ExpenseGetPayload<Record<string, never>>
-
-/** Prisma returns BigInt; JSON.stringify throws on it. Downsize while lossless. */
-function serialize(row: ExpenseRow) {
-  return { ...row, amountMinor: Number(row.amountMinor) }
-}
-
-async function assertCategoryOwned(
-  db: PrismaClient,
-  userId: string,
-  categoryId: string,
-): Promise<void> {
-  const category = await db.category.findFirst({ where: { id: categoryId, userId } })
-  if (!category) throw new HTTPException(404)
-}
 
 function samePayload(row: ExpenseRow, userId: string, input: CreateExpenseInput): boolean {
   return (
@@ -53,7 +43,7 @@ export async function createExpense(
         message: 'Expense id already used with a different payload',
       })
     }
-    return { expense: serialize(existing), created: false }
+    return { expense: serializeAmountMinor(existing), created: false }
   }
 
   try {
@@ -67,7 +57,7 @@ export async function createExpense(
         note: input.note ?? null,
       },
     })
-    return { expense: serialize(row), created: true }
+    return { expense: serializeAmountMinor(row), created: true }
   } catch (error) {
     // Lost an id race with another create; treat as conflicting replay.
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
@@ -127,11 +117,12 @@ export async function listExpenses(db: PrismaClient, userId: string, query: List
   const page = rows.slice(0, take - 1)
   const last = page[page.length - 1]
   return {
-    items: page.map(serialize),
+    items: page.map(serializeAmountMinor),
     nextCursor: hasMore && last ? encodeCursor(last.occurredAt, last.id) : null,
   }
 }
 
+/** Local: the shared findOwnedOr404 has no deletedAt filter (live-only here). */
 async function findOwnedLive(db: PrismaClient, userId: string, id: string) {
   const expense = await db.expense.findFirst({ where: { id, userId, deletedAt: null } })
   if (!expense) throw new HTTPException(404)
@@ -139,7 +130,7 @@ async function findOwnedLive(db: PrismaClient, userId: string, id: string) {
 }
 
 export async function getExpense(db: PrismaClient, userId: string, id: string) {
-  return serialize(await findOwnedLive(db, userId, id))
+  return serializeAmountMinor(await findOwnedLive(db, userId, id))
 }
 
 export async function updateExpense(
@@ -160,7 +151,7 @@ export async function updateExpense(
       ...(input.note !== undefined && { note: input.note }),
     },
   })
-  return serialize(row)
+  return serializeAmountMinor(row)
 }
 
 /**
