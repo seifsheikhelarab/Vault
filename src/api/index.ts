@@ -4,6 +4,7 @@ import authRouter from './auth/router'
 import budgetsRouter from './budgets/router'
 import categoriesRouter from './categories/router'
 import chatRouter from './chat/router'
+import dashboardRouter from './dashboard/router'
 import expensesRouter from './expenses/router'
 import recurringRouter from './recurring/router'
 import reportsRouter from './reports/router'
@@ -16,6 +17,7 @@ api.route('/auth', authRouter)
 api.route('/budgets', budgetsRouter)
 api.route('/categories', categoriesRouter)
 api.route('/chat', chatRouter)
+api.route('/dashboard', dashboardRouter)
 api.route('/expenses', expensesRouter)
 api.route('/recurring', recurringRouter)
 api.route('/reports', reportsRouter)
