@@ -1,6 +1,5 @@
 import type { Context } from 'hono'
 import type { AppEnv } from '../../config/env'
-import { createPrisma } from '../../config/prisma'
 import {
   createExpense,
   deleteExpense,
@@ -20,18 +19,18 @@ export async function createExpenseController(
   c: Context<AppEnv>,
   input: CreateExpenseInput,
 ) {
-  const db = createPrisma(c.env.DATABASE_URL)
+  const db = c.get('db')
   const { expense, created } = await createExpense(db, c.get('userId'), input, new Date())
   return c.json(expense, created ? 201 : 200)
 }
 
 export async function listExpensesController(c: Context<AppEnv>, query: ListExpensesQuery) {
-  const db = createPrisma(c.env.DATABASE_URL)
+  const db = c.get('db')
   return c.json(await listExpenses(db, c.get('userId'), query))
 }
 
 export async function getExpenseController(c: Context<AppEnv>, id: string) {
-  const db = createPrisma(c.env.DATABASE_URL)
+  const db = c.get('db')
   return c.json(await getExpense(db, c.get('userId'), id))
 }
 
@@ -40,12 +39,12 @@ export async function updateExpenseController(
   id: string,
   input: UpdateExpenseInput,
 ) {
-  const db = createPrisma(c.env.DATABASE_URL)
+  const db = c.get('db')
   return c.json(await updateExpense(db, c.get('userId'), id, input))
 }
 
 export async function deleteExpenseController(c: Context<AppEnv>, id: string) {
-  const db = createPrisma(c.env.DATABASE_URL)
+  const db = c.get('db')
   await deleteExpense(db, c.get('userId'), id, new Date())
   return c.body(null, 204)
 }

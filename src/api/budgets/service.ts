@@ -1,6 +1,11 @@
-import { HTTPException } from 'hono/http-exception'
 import type { PrismaClient } from '../../generated/prisma/client'
 import { DEFAULT_TIME_ZONE, periodContaining } from '../../utils/period'
+import {
+  assertCategoryOwned,
+  deleteOwnedOr404,
+  findOwnedOr404,
+  serializeAmountMinor,
+} from '../../utils/ownership'
 import type { CreateBudgetInput, UpdateBudgetInput } from './validation'
 
 /**
@@ -12,20 +17,6 @@ import type { CreateBudgetInput, UpdateBudgetInput } from './validation'
  */
 
 type BudgetRow = Awaited<ReturnType<PrismaClient['budget']['findFirst']>>
-
-/** Prisma returns BigInt; JSON.stringify throws on it. Downsize while lossless. */
-function serialize(row: NonNullable<BudgetRow>) {
-  return { ...row, amountMinor: Number(row.amountMinor) }
-}
-
-async function assertCategoryOwned(
-  db: PrismaClient,
-  userId: string,
-  categoryId: string,
-): Promise<void> {
-  const category = await db.category.findFirst({ where: { id: categoryId, userId } })
-  if (!category) throw new HTTPException(404)
-}
 
 export async function createBudget(
   db: PrismaClient,
@@ -41,7 +32,7 @@ export async function createBudget(
       categoryId: input.categoryId ?? null,
     },
   })
-  return serialize(row)
+  return serializeAmountMinor(row)
 }
 
 export async function listBudgets(db: PrismaClient, userId: string) {
@@ -49,17 +40,11 @@ export async function listBudgets(db: PrismaClient, userId: string) {
     where: { userId },
     orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
   })
-  return rows.map(serialize)
-}
-
-async function findOwned(db: PrismaClient, userId: string, id: string) {
-  const budget = await db.budget.findFirst({ where: { id, userId } })
-  if (!budget) throw new HTTPException(404)
-  return budget
+  return rows.map(serializeAmountMinor)
 }
 
 export async function getBudget(db: PrismaClient, userId: string, id: string) {
-  return serialize(await findOwned(db, userId, id))
+  return serializeAmountMinor(await findOwnedOr404(db.budget, userId, id))
 }
 
 export async function updateBudget(
@@ -68,7 +53,7 @@ export async function updateBudget(
   id: string,
   input: UpdateBudgetInput,
 ) {
-  await findOwned(db, userId, id)
+  await findOwnedOr404(db.budget, userId, id)
   if (input.categoryId) await assertCategoryOwned(db, userId, input.categoryId)
   const row = await db.budget.update({
     where: { id },
@@ -78,12 +63,11 @@ export async function updateBudget(
       ...(input.categoryId !== undefined && { categoryId: input.categoryId }),
     },
   })
-  return serialize(row)
+  return serializeAmountMinor(row)
 }
 
 export async function deleteBudget(db: PrismaClient, userId: string, id: string): Promise<void> {
-  const result = await db.budget.deleteMany({ where: { id, userId } })
-  if (result.count === 0) throw new HTTPException(404)
+  await deleteOwnedOr404(db.budget, userId, id)
 }
 
 async function sumSpent(

@@ -1,6 +1,7 @@
 import { HTTPException } from 'hono/http-exception'
 import { Prisma, type PrismaClient } from '../../generated/prisma/client'
 import { decodeCursor, encodeCursor } from '../expenses/service'
+import { serializeAmountMinor } from '../../utils/ownership'
 import type { PullQuery, PushBatch, PushCategoryItem, PushExpenseItem } from './validation'
 
 /**
@@ -139,11 +140,6 @@ export async function pushBatch(db: PrismaClient, userId: string, input: PushBat
 
 type Change<T> = { kind: 'expense' | 'category'; row: T }
 
-function serializeExpense(row: Prisma.ExpenseGetPayload<Record<string, never>>) {
-  // BigInt breaks JSON.stringify; amountMinor crosses as a number (ticket #7).
-  return { ...row, amountMinor: Number(row.amountMinor) }
-}
-
 /**
  * Changes since the cursor across BOTH tables under one watermark:
  * keyset predicate (updatedAt, id) > (cursor.at, cursor.id), ascending walk.
@@ -190,7 +186,7 @@ export async function pullChanges(db: PrismaClient, userId: string, query: PullQ
   return {
     expenses: page
       .filter((c): c is Change<ExpenseRow> => c.kind === 'expense')
-      .map((c) => serializeExpense(c.row)),
+      .map((c) => serializeAmountMinor(c.row)),
     categories: page.filter((c): c is Change<CategoryRow> => c.kind === 'category').map((c) => c.row),
     nextCursor: hasMore && last ? encodeCursor(last.row.updatedAt, last.row.id) : null,
   }

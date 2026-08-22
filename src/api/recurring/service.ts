@@ -1,6 +1,12 @@
 import { HTTPException } from 'hono/http-exception'
 import { Prisma, type PrismaClient } from '../../generated/prisma/client'
 import type { Frequency } from '../../generated/prisma/enums'
+import {
+  assertCategoryOwned,
+  deleteOwnedOr404,
+  findOwnedOr404,
+  serializeAmountMinor,
+} from '../../utils/ownership'
 import type { CreateRecurringInput, UpdateRecurringInput } from './validation'
 
 /**
@@ -59,22 +65,6 @@ export function nextOccurrence(
   return new Date(Date.UTC(year, month, day))
 }
 
-type RecurringRow = Prisma.RecurringDefinitionGetPayload<Record<string, never>>
-
-/** Prisma returns BigInt; JSON.stringify throws on it. Downsize while lossless. */
-function serialize(row: RecurringRow) {
-  return { ...row, amountMinor: Number(row.amountMinor) }
-}
-
-async function assertCategoryOwned(
-  db: PrismaClient,
-  userId: string,
-  categoryId: string,
-): Promise<void> {
-  const category = await db.category.findFirst({ where: { id: categoryId, userId } })
-  if (!category) throw new HTTPException(404)
-}
-
 export async function createDefinition(db: PrismaClient, userId: string, input: CreateRecurringInput) {
   if (input.categoryId) await assertCategoryOwned(db, userId, input.categoryId)
   const anchorDate = parseAnchorDate(input.anchorDate)
@@ -91,7 +81,7 @@ export async function createDefinition(db: PrismaClient, userId: string, input: 
       nextRunAt: anchorDate,
     },
   })
-  return serialize(row)
+  return serializeAmountMinor(row)
 }
 
 export async function listDefinitions(db: PrismaClient, userId: string) {
@@ -99,17 +89,11 @@ export async function listDefinitions(db: PrismaClient, userId: string) {
     where: { userId },
     orderBy: [{ createdAt: 'asc' }, { name: 'asc' }],
   })
-  return rows.map(serialize)
-}
-
-async function findOwned(db: PrismaClient, userId: string, id: string) {
-  const row = await db.recurringDefinition.findFirst({ where: { id, userId } })
-  if (!row) throw new HTTPException(404)
-  return row
+  return rows.map(serializeAmountMinor)
 }
 
 export async function getDefinition(db: PrismaClient, userId: string, id: string) {
-  return serialize(await findOwned(db, userId, id))
+  return serializeAmountMinor(await findOwnedOr404(db.recurringDefinition, userId, id))
 }
 
 export async function updateDefinition(
@@ -118,7 +102,7 @@ export async function updateDefinition(
   id: string,
   input: UpdateRecurringInput,
 ) {
-  await findOwned(db, userId, id)
+  await findOwnedOr404(db.recurringDefinition, userId, id)
   if (input.categoryId) await assertCategoryOwned(db, userId, input.categoryId)
   // Moving the anchor restarts the cadence: nextRunAt realigns to it. Already
   // created occurrences stay put; overlapping ones dedupe on the next run.
@@ -136,12 +120,11 @@ export async function updateDefinition(
       ...(input.paused !== undefined && { paused: input.paused }),
     },
   })
-  return serialize(row)
+  return serializeAmountMinor(row)
 }
 
 export async function deleteDefinition(db: PrismaClient, userId: string, id: string): Promise<void> {
-  const result = await db.recurringDefinition.deleteMany({ where: { id, userId } })
-  if (result.count === 0) throw new HTTPException(404)
+  await deleteOwnedOr404(db.recurringDefinition, userId, id)
 }
 
 /**

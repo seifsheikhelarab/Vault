@@ -1,14 +1,5 @@
-import { z } from 'zod'
+import type { PrismaClient } from '../generated/prisma/client'
 import type { ParseExpense } from '../api/chat/service'
-
-export const envSchema = z.object({
-  DATABASE_URL: z.string().min(1).optional(),
-  GEMINI_API_KEY: z.string().min(1),
-  BETTER_AUTH_SECRET: z.string().min(1),
-  BETTER_AUTH_URL: z.url().optional(),
-})
-
-export type Env = z.infer<typeof envSchema>
 
 /**
  * Full runtime env the app expects at request time. Secrets are not declared
@@ -30,18 +21,10 @@ export type AppBindings = CloudflareBindings & {
 
 /**
  * Hono env for resource routers: bindings plus the session userId requireAuth
- * stores on context for downstream controllers.
+ * stores on context and the request-scoped Prisma client set by the api
+ * aggregator middleware.
  */
 export type AppEnv = {
   Bindings: AppBindings
-  Variables: { userId: string }
-}
-
-export function parseEnv(bindings: CloudflareBindings): Env {
-  const result = envSchema.safeParse(bindings)
-  if (!result.success) {
-    const missing = Object.keys(z.flattenError(result.error).fieldErrors).join(', ')
-    throw new Error(`Invalid environment variables: ${missing}`)
-  }
-  return result.data
+  Variables: { userId: string; db: PrismaClient }
 }

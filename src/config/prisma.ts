@@ -9,6 +9,17 @@ import { PrismaClient } from '../generated/prisma/client'
  */
 const clients = new Map<string, PrismaClient>()
 
+/**
+ * Hyperdrive's connection string when the binding exists, else DATABASE_URL.
+ * Tests inject HYPERDRIVE as an empty object, so DATABASE_URL still wins there.
+ */
+export function resolveDatabaseUrl(env: {
+  DATABASE_URL: string
+  HYPERDRIVE?: { connectionString?: string }
+}): string {
+  return env.HYPERDRIVE?.connectionString ?? env.DATABASE_URL
+}
+
 export function createPrisma(databaseUrl: string): PrismaClient {
   let client = clients.get(databaseUrl)
   if (!client) {

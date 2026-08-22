@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { requireAuth } from '../../config/auth'
 import { onError } from '../../config/errors'
-import type { AppBindings } from '../../config/env'
+import type { AppEnv } from '../../config/env'
 import { resetRateLimits } from '../../config/rate-limit'
 import { registerUser } from '../../test/fixtures'
 import { buildApp, truncateAll } from '../../test/helpers'
@@ -136,13 +136,18 @@ describe('session lifecycle', () => {
 })
 
 describe('requireAuth guard', () => {
-  const probe = new Hono<{ Bindings: AppBindings }>()
+  const probe = new Hono<AppEnv>()
   probe.onError(onError)
+  // The api aggregator middleware normally sets db; mirror it here.
+  probe.use('*', (c, next) => {
+    c.set('db', t.db)
+    return next()
+  })
   probe.use('*', requireAuth)
   probe.get('/', (c) => c.json({ ok: true }))
 
   async function probeRequest(headers?: HeadersInit): Promise<Response> {
-    return await probe.request('/', { headers }, t.bindings as AppBindings)
+    return await probe.request('/', { headers }, t.bindings)
   }
 
   it('returns the 401 envelope without a session cookie', async () => {

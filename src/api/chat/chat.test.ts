@@ -114,6 +114,23 @@ describe('POST /api/chat/parse', () => {
     expect(((await res.json()) as { error: { code: string } }).error.code).toBe('UPSTREAM_ERROR')
   })
 
+  it('threads the requesting user timeZone into the parser', async () => {
+    const { user, headers } = await registerUser(t)
+    await t.db.user.update({ where: { id: user.id }, data: { timeZone: 'Europe/Paris' } })
+
+    let seenTimeZone: string | undefined
+    const chat = buildApp({
+      parseExpense: async (_message, _now, timeZone) => {
+        seenTimeZone = timeZone
+        return taxiDraft()
+      },
+    })
+    const res = await parse(chat, headers, JSON.stringify({ message: 'taxi 120 yesterday' }))
+
+    expect(res.status).toBe(200)
+    expect(seenTimeZone).toBe('Europe/Paris')
+  })
+
   it('requires a session', async () => {
     const res = await parse(t, new Headers(), JSON.stringify({ message: 'coffee 50' }))
     expect(res.status).toBe(401)

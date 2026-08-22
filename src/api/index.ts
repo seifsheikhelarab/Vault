@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
 import type { AppEnv } from '../config/env'
+import { createPrisma, resolveDatabaseUrl } from '../config/prisma'
 import authRouter from './auth/router'
 import budgetsRouter from './budgets/router'
 import categoriesRouter from './categories/router'
@@ -11,6 +12,12 @@ import reportsRouter from './reports/router'
 import syncRouter from './sync/router'
 
 const api = new Hono<AppEnv>()
+
+// One client per request, memoized per connection string inside createPrisma.
+api.use('*', async (c, next) => {
+  c.set('db', createPrisma(resolveDatabaseUrl(c.env)))
+  await next()
+})
 
 // Resource routers (reports, dashboard) mount here as they land.
 api.route('/auth', authRouter)
