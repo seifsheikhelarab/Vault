@@ -1,11 +1,13 @@
 import { Hono } from 'hono'
-import type { AppBindings } from '../config/env'
+import type { AppEnv } from '../config/env'
 import authRouter from './auth/router'
+import categoriesRouter from './categories/router'
 
-const api = new Hono<{ Bindings: AppBindings }>()
+const api = new Hono<AppEnv>()
 
-// Resource routers (expenses, categories, budgets, recurring, reports,
+// Resource routers (expenses, budgets, recurring, reports,
 // dashboard, chat, sync) mount here as they land.
 api.route('/auth', authRouter)
+api.route('/categories', categoriesRouter)
 
 export default api

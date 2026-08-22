@@ -21,6 +21,15 @@ export type AppBindings = CloudflareBindings & {
   GEMINI_API_KEY?: string
 }
 
+/**
+ * Hono env for resource routers: bindings plus the session userId requireAuth
+ * stores on context for downstream controllers.
+ */
+export type AppEnv = {
+  Bindings: AppBindings
+  Variables: { userId: string }
+}
+
 export function parseEnv(bindings: CloudflareBindings): Env {
   const result = envSchema.safeParse(bindings)
   if (!result.success) {
