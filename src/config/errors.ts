@@ -1,6 +1,7 @@
 import type { Context, ErrorHandler } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import { z } from 'zod'
+import type { AppBindings } from './env'
 
 export type ErrorIssues = {
   formErrors: string[]
@@ -45,7 +46,7 @@ function defaultMessage(status: number): string {
   }
 }
 
-export const onError: ErrorHandler<{ Bindings: CloudflareBindings }> = (err, c) => {
+export const onError: ErrorHandler<{ Bindings: AppBindings }> = (err, c) => {
   if (err instanceof z.ZodError) return zodError(err, c)
 
   if (err instanceof HTTPException) {

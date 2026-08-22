@@ -24,3 +24,8 @@ export function rateLimit(limit: number) {
 
 export const globalRateLimit = rateLimit(120)
 export const strictRateLimit = rateLimit(10)
+
+/** Test-only: clear all buckets so suites start with a fresh budget. */
+export function resetRateLimits(): void {
+  buckets.clear()
+}

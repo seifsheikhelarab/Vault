@@ -3,10 +3,11 @@ import { HTTPException } from 'hono/http-exception'
 import { describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 import app from '../index'
+import type { AppBindings } from './env'
 import { onError } from './errors'
 
 function errorApp(handler: () => never) {
-  const test = new Hono<{ Bindings: CloudflareBindings }>()
+  const test = new Hono<{ Bindings: AppBindings }>()
   test.get('/boom', handler)
   test.onError(onError)
   return test

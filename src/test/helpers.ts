@@ -1,5 +1,6 @@
 import app from '../index'
 import { createPrisma } from '../config/prisma'
+import type { AppBindings } from '../config/env'
 import { TEST_DB_URL } from './db-url'
 
 /**
@@ -50,8 +51,9 @@ export function buildApp(overrides: Partial<Omit<TestBindings, 'HYPERDRIVE'>> = 
   const db = createPrisma(bindings.DATABASE_URL)
   return {
     db,
+    bindings,
     async request(path: string, init?: RequestInit): Promise<Response> {
-      return await app.request(path, init, bindings as CloudflareBindings)
+      return await app.request(path, init, bindings as unknown as AppBindings)
     },
   }
 }

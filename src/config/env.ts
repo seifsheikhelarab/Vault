@@ -9,6 +9,18 @@ export const envSchema = z.object({
 
 export type Env = z.infer<typeof envSchema>
 
+/**
+ * Full runtime env the app expects at request time. Secrets are not declared
+ * in wrangler.jsonc (they arrive via `wrangler secret put` / `.dev.vars`), so
+ * this widens the generated CloudflareBindings with the keys routes read.
+ */
+export type AppBindings = CloudflareBindings & {
+  DATABASE_URL: string
+  BETTER_AUTH_SECRET: string
+  BETTER_AUTH_URL?: string
+  GEMINI_API_KEY?: string
+}
+
 export function parseEnv(bindings: CloudflareBindings): Env {
   const result = envSchema.safeParse(bindings)
   if (!result.success) {
