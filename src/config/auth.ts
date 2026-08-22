@@ -4,7 +4,6 @@ import type { Context, Next } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import type { PrismaClient } from '../generated/prisma/client'
 import type { AppBindings, AppEnv } from './env'
-import { createPrisma } from './prisma'
 import { seedDefaultCategories } from '../api/categories/service'
 
 /**
@@ -48,8 +47,7 @@ export async function requireAuth(
   c: Context<AppEnv>,
   next: Next,
 ): Promise<Response | void> {
-  const db = createPrisma(c.env.DATABASE_URL)
-  const session = await createAuth(db, c.env).api.getSession({
+  const session = await createAuth(c.get('db'), c.env).api.getSession({
     headers: c.req.raw.headers,
   })
   if (!session) throw new HTTPException(401)

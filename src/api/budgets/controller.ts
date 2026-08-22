@@ -1,6 +1,5 @@
 import type { Context } from 'hono'
 import type { AppEnv } from '../../config/env'
-import { createPrisma } from '../../config/prisma'
 import {
   createBudget,
   deleteBudget,
@@ -17,17 +16,17 @@ import type { CreateBudgetInput, UpdateBudgetInput } from './validation'
  */
 
 export async function createBudgetController(c: Context<AppEnv>, input: CreateBudgetInput) {
-  const db = createPrisma(c.env.DATABASE_URL)
+  const db = c.get('db')
   return c.json(await createBudget(db, c.get('userId'), input), 201)
 }
 
 export async function listBudgetsController(c: Context<AppEnv>) {
-  const db = createPrisma(c.env.DATABASE_URL)
+  const db = c.get('db')
   return c.json(await listBudgets(db, c.get('userId')))
 }
 
 export async function getBudgetController(c: Context<AppEnv>, id: string) {
-  const db = createPrisma(c.env.DATABASE_URL)
+  const db = c.get('db')
   return c.json(await getBudget(db, c.get('userId'), id))
 }
 
@@ -36,12 +35,12 @@ export async function updateBudgetController(
   id: string,
   input: UpdateBudgetInput,
 ) {
-  const db = createPrisma(c.env.DATABASE_URL)
+  const db = c.get('db')
   return c.json(await updateBudget(db, c.get('userId'), id, input))
 }
 
 export async function deleteBudgetController(c: Context<AppEnv>, id: string) {
-  const db = createPrisma(c.env.DATABASE_URL)
+  const db = c.get('db')
   await deleteBudget(db, c.get('userId'), id)
   return c.body(null, 204)
 }
@@ -50,6 +49,6 @@ export async function budgetProgressController(
   c: Context<AppEnv>,
   query: { date?: string },
 ) {
-  const db = createPrisma(c.env.DATABASE_URL)
+  const db = c.get('db')
   return c.json(await getBudgetProgress(db, c.get('userId'), query.date))
 }

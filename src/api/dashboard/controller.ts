@@ -1,6 +1,5 @@
 import type { Context } from 'hono'
 import type { AppEnv } from '../../config/env'
-import { createPrisma } from '../../config/prisma'
 import { getDashboard } from './service'
 
 /**
@@ -8,6 +7,6 @@ import { getDashboard } from './service'
  * userId plus validated query in, one snapshot JSON out.
  */
 export async function dashboardController(c: Context<AppEnv>, query: { date?: string }) {
-  const db = createPrisma(c.env.DATABASE_URL)
+  const db = c.get('db')
   return c.json(await getDashboard(db, c.get('userId'), query.date))
 }

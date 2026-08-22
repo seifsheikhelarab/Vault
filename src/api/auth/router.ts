@@ -1,18 +1,17 @@
 import { Hono } from 'hono'
 import { createAuth } from '../../config/auth'
-import type { AppBindings } from '../../config/env'
-import { createPrisma } from '../../config/prisma'
+import type { AppEnv } from '../../config/env'
 
 /**
  * Better Auth passthrough (ticket #5): forward the raw Request so Better Auth
  * owns its endpoints, cookies, and headers. basePath stays the default
- * `/api/auth` because this router is mounted at `/api/auth`.
+ * `/api/auth` because this router is mounted at `/api/auth`. The db comes
+ * from the api aggregator middleware on context.
  */
-const router = new Hono<{ Bindings: AppBindings }>()
+const router = new Hono<AppEnv>()
 
 router.on(['POST', 'GET'], '*', (c) => {
-  const db = createPrisma(c.env.DATABASE_URL)
-  return createAuth(db, c.env).handler(c.req.raw)
+  return createAuth(c.get('db'), c.env).handler(c.req.raw)
 })
 
 export default router
