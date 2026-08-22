@@ -1,0 +1,6 @@
+# Copy to .dev.vars (gitignored). Used by `wrangler dev`.
+# Local Postgres fallback when the HYPERDRIVE binding is absent.
+DATABASE_URL=postgresql://postgres:admin@localhost:5432/vault
+GEMINI_API_KEY=
+BETTER_AUTH_SECRET=replace-with-long-random-string
+BETTER_AUTH_URL=http://localhost:8787
