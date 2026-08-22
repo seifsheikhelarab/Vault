@@ -1,4 +1,4 @@
-import app from '../index'
+import { app } from '../index'
 import { createPrisma } from '../config/prisma'
 import type { AppBindings } from '../config/env'
 import type { ParseExpense } from '../api/chat/service'
