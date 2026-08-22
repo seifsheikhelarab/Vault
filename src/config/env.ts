@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import type { ParseExpense } from '../api/chat/service'
 
 export const envSchema = z.object({
   DATABASE_URL: z.string().min(1).optional(),
@@ -19,6 +20,12 @@ export type AppBindings = CloudflareBindings & {
   BETTER_AUTH_SECRET: string
   BETTER_AUTH_URL?: string
   GEMINI_API_KEY?: string
+  /**
+   * Ticket #12 injection seam: overrides the production Gemini parser.
+   * Tests stub this through binding overrides; production never sets it,
+   * so the chat controller falls back to createGeminiParser(GEMINI_API_KEY).
+   */
+  parseExpense?: ParseExpense
 }
 
 /**
