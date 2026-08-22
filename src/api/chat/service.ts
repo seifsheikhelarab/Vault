@@ -2,6 +2,7 @@ import { GoogleGenAI, Type } from '@google/genai'
 import { HTTPException } from 'hono/http-exception'
 import { z } from 'zod'
 import type { PrismaClient } from '../../generated/prisma/client'
+import { DEFAULT_TIME_ZONE } from '../../utils/period'
 
 /**
  * Chat parsing service (ticket #12). Turns a free-text message into an
@@ -23,8 +24,10 @@ export type ExpenseDraft = {
  * The project-wide mock seam (ticket #12): tests stub exactly this function
  * via binding injection; every other layer runs for real. Returns RAW model
  * output — validation happens at the trust boundary in parseExpenseDraft.
+ * `timeZone` is the requesting user's column value, for resolving relative
+ * dates like "yesterday" on the user's calendar.
  */
-export type ParseExpense = (message: string, now: Date) => Promise<unknown>
+export type ParseExpense = (message: string, now: Date, timeZone: string) => Promise<unknown>
 
 /** Shape Gemini's responseSchema forces; anything else is malformed. */
 const modelDraftSchema = z.object({
@@ -51,9 +54,12 @@ export async function parseExpenseDraft(
   now: Date,
   parse: ParseExpense,
 ): Promise<ExpenseDraft> {
+  const user = await db.user.findUnique({ where: { id: userId }, select: { timeZone: true } })
+  const timeZone = user?.timeZone ?? DEFAULT_TIME_ZONE
+
   let raw: unknown
   try {
-    raw = await parse(message, now)
+    raw = await parse(message, now, timeZone)
   } catch (error) {
     console.error('chat parser threw', error)
     throw upstreamError()
@@ -96,16 +102,16 @@ export async function parseExpenseDraft(
 export function createGeminiParser(apiKey: string): ParseExpense {
   const ai = new GoogleGenAI({ apiKey })
 
-  return async (message, now) => {
+  return async (message, now, timeZone) => {
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
-      contents: `Today is ${now.toISOString().slice(0, 10)} (Africa/Cairo). Parse this expense message: "${message}"`,
+      contents: `Today is ${now.toISOString().slice(0, 10)} (${timeZone}). Parse this expense message: "${message}"`,
       config: {
         systemInstruction:
           'Extract one expense draft from the user message. amountMinor is integer minor units ' +
           '(EGP piasters = amount * 100). occurredAtGuess is an ISO date (YYYY-MM-DD); resolve ' +
-          'relative days like "yesterday" against today. categoryGuess is a plain category name, ' +
-          'never an id. Return null for unknown fields.',
+          'relative days like "yesterday" against today in the given time zone. categoryGuess is a ' +
+          'plain category name, never an id. Return null for unknown fields.',
         responseMimeType: 'application/json',
         responseSchema: {
           type: Type.OBJECT,
