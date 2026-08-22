@@ -2,9 +2,10 @@ import { Hono } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import api from './api'
 import { onError } from './config/errors'
+import type { AppBindings } from './config/env'
 import { globalRateLimit, strictRateLimit } from './config/rate-limit'
 
-const app = new Hono<{ Bindings: CloudflareBindings }>()
+const app = new Hono<{ Bindings: AppBindings }>()
 
 app.use('/api/auth/*', strictRateLimit)
 app.use('/api/chat/*', strictRateLimit)
