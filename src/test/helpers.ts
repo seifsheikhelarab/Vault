@@ -46,8 +46,9 @@ export function buildApp(overrides: Partial<Omit<TestBindings, 'HYPERDRIVE'>> = 
     BETTER_AUTH_SECRET: 'test-secret-0123456789abcdef0123456789abcdef',
     BETTER_AUTH_URL: 'http://localhost:8787',
     GEMINI_API_KEY: 'test-gemini-key',
-    // No route consumes Hyperdrive yet; routes go through DATABASE_URL directly
-    // in tests (spec #1: Prisma connects directly, no Hyperdrive).
+    // Hyperdrive binding stubbed empty: resolveDatabaseUrl sees no
+    // connectionString and falls back to DATABASE_URL (tests connect direct,
+    // spec #1: Prisma connects directly, no Hyperdrive).
     HYPERDRIVE: {} as CloudflareBindings['HYPERDRIVE'],
     ...overrides,
   }

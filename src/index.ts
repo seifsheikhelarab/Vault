@@ -4,7 +4,7 @@ import api from './api'
 import { onError } from './config/errors'
 import type { AppBindings } from './config/env'
 import { globalRateLimit, strictRateLimit } from './config/rate-limit'
-import { createPrisma } from './config/prisma'
+import { createPrisma, resolveDatabaseUrl } from './config/prisma'
 import { materializeDue } from './api/recurring/service'
 
 const app = new Hono<{ Bindings: AppBindings }>()
@@ -30,6 +30,6 @@ export { app }
 export default {
   fetch: app.fetch,
   async scheduled(controller: ScheduledController, env: AppBindings, ctx: ExecutionContext) {
-    ctx.waitUntil(materializeDue(createPrisma(env.DATABASE_URL), new Date()))
+    ctx.waitUntil(materializeDue(createPrisma(resolveDatabaseUrl(env)), new Date()))
   },
 } satisfies ExportedHandler<AppBindings>

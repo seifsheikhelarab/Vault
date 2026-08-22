@@ -7,7 +7,11 @@ const buckets = new Map<string, { count: number; resetAt: number }>()
 
 export function rateLimit(limit: number) {
   return async (c: Context, next: Next) => {
-    const key = `${limit}:${c.req.header('x-forwarded-for') ?? 'anonymous'}`
+    // CF-Connecting-IP is set by Cloudflare's edge and cannot be spoofed by
+    // clients; x-forwarded-for is only a fallback for non-CF origins.
+    const ip =
+      c.req.header('CF-Connecting-IP') ?? c.req.header('x-forwarded-for') ?? 'anonymous'
+    const key = `${limit}:${ip}`
     const now = Date.now()
     const bucket = buckets.get(key)
     if (!bucket || bucket.resetAt <= now) {
