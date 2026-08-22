@@ -57,6 +57,7 @@ model Account {
   accountId             String
   providerId            String
   userId                String
+  issuer                String?
   accessToken           String?
   refreshToken          String?
   idToken               String?
