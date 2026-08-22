@@ -21,7 +21,8 @@ export const idParamSchema = z.object({
 
 type Hook = Parameters<typeof zValidator>[2]
 
-const hook: Hook = (result, c: Context) =>
+/** Shared 422-envelope hook; reused by other resources' validators. */
+export const hook: Hook = (result, c: Context) =>
   result.success ? undefined : zodError(result.error as z.ZodError, c)
 
 export const validateJson = <S extends z.ZodType>(schema: S) =>
