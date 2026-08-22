@@ -1,6 +1,7 @@
 import app from '../index'
 import { createPrisma } from '../config/prisma'
 import type { AppBindings } from '../config/env'
+import type { ParseExpense } from '../api/chat/service'
 import { TEST_DB_URL } from './db-url'
 
 /**
@@ -29,6 +30,8 @@ type TestBindings = CloudflareBindings & {
   BETTER_AUTH_SECRET: string
   BETTER_AUTH_URL: string
   GEMINI_API_KEY: string
+  /** Chat parser seam (ticket #12): stub this to fake Gemini output. */
+  parseExpense?: ParseExpense
 }
 
 /**

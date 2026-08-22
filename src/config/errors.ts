@@ -18,6 +18,7 @@ const STATUS_CODES = {
   404: 'NOT_FOUND',
   409: 'CONFLICT',
   422: 'VALIDATION_ERROR',
+  502: 'UPSTREAM_ERROR',
 } as const satisfies Record<number, string>
 
 function envelope(code: string, message: string, issues?: ErrorIssues): Envelope {
@@ -51,13 +52,15 @@ export const onError: ErrorHandler<{ Bindings: AppBindings }> = (err, c) => {
 
   if (err instanceof HTTPException) {
     const status = err.status
-    if (status >= 500) {
+    const code = STATUS_CODES[status as keyof typeof STATUS_CODES]
+    // Known statuses keep their envelope (incl. 502 UPSTREAM_ERROR); unknown
+    // >=500 collapse to a sanitized 500 so internals never leak.
+    if (!code && status >= 500) {
       console.error(err)
       return c.json(envelope('INTERNAL', 'Internal server error'), 500)
     }
-    const code = STATUS_CODES[status as keyof typeof STATUS_CODES] ?? 'ERROR'
     const message = err.message || defaultMessage(status)
-    return c.json(envelope(code, message), status)
+    return c.json(envelope(code ?? 'ERROR', message), status)
   }
 
   console.error(err)
