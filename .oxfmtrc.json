@@ -1,0 +1,7 @@
+{
+    "$schema": "./node_modules/oxfmt/configuration_schema.json",
+    "semi": true,
+    "singleQuote": true,
+    "tabWidth": 4,
+    "ignorePatterns": ["node_modules", "src/generated", ".agents", "worker-configuration.d.ts"]
+}

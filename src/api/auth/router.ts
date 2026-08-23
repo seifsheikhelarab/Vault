@@ -1,6 +1,6 @@
-import { Hono } from 'hono'
-import { createAuth } from '../../config/auth'
-import type { AppEnv } from '../../config/env'
+import { Hono } from 'hono';
+import { createAuth } from '../../config/auth';
+import type { AppEnv } from '../../config/env';
 
 /**
  * Better Auth passthrough (ticket #5): forward the raw Request so Better Auth
@@ -8,10 +8,10 @@ import type { AppEnv } from '../../config/env'
  * `/api/auth` because this router is mounted at `/api/auth`. The db comes
  * from the api aggregator middleware on context.
  */
-const router = new Hono<AppEnv>()
+const router = new Hono<AppEnv>();
 
 router.on(['POST', 'GET'], '*', (c) => {
-  return createAuth(c.get('db'), c.env).handler(c.req.raw)
-})
+    return createAuth(c.get('db'), c.env).handler(c.req.raw);
+});
 
-export default router
+export default router;

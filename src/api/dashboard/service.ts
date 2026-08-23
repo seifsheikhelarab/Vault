@@ -1,7 +1,7 @@
-import type { PrismaClient } from '../../generated/prisma/client'
-import { getBudgetProgress, type BudgetProgress } from '../budgets/service'
-import { listExpenses } from '../expenses/service'
-import { getReport } from '../reports/service'
+import type { PrismaClient } from '../../generated/prisma/client';
+import { getBudgetProgress, type BudgetProgress } from '../budgets/service';
+import { listExpenses } from '../expenses/service';
+import { getReport } from '../reports/service';
 
 /**
  * Dashboard service (ticket #11). Composition only: every number comes from
@@ -12,56 +12,58 @@ import { getReport } from '../reports/service'
  */
 
 export interface PeriodSummary {
-  total: number
-  previous: { total: number; delta: number; deltaPct: number | null }
+    total: number;
+    previous: { total: number; delta: number; deltaPct: number | null };
 }
 
 export interface RecentExpense {
-  id: string
-  amountMinor: number
-  currency: string
-  categoryId: string | null
-  occurredAt: Date
-  note: string | null
+    id: string;
+    amountMinor: number;
+    currency: string;
+    categoryId: string | null;
+    occurredAt: Date;
+    note: string | null;
 }
 
 export interface DashboardSnapshot {
-  month: PeriodSummary
-  week: PeriodSummary
-  budgets: BudgetProgress[]
-  recentExpenses: RecentExpense[]
+    month: PeriodSummary;
+    week: PeriodSummary;
+    budgets: BudgetProgress[];
+    recentExpenses: RecentExpense[];
 }
 
-const RECENT_LIMIT = 5
+const RECENT_LIMIT = 5;
 
 export async function getDashboard(
-  db: PrismaClient,
-  userId: string,
-  date?: string,
+    db: PrismaClient,
+    userId: string,
+    date?: string,
 ): Promise<DashboardSnapshot> {
-  const [month, week, budgets, recent] = await Promise.all([
-    getReport(db, userId, 'month', date),
-    getReport(db, userId, 'week', date),
-    getBudgetProgress(db, userId, date),
-    listExpenses(db, userId, { limit: RECENT_LIMIT }),
-  ])
+    const [month, week, budgets, recent] = await Promise.all([
+        getReport(db, userId, 'month', date),
+        getReport(db, userId, 'week', date),
+        getBudgetProgress(db, userId, date),
+        listExpenses(db, userId, { limit: RECENT_LIMIT }),
+    ]);
 
-  const summarize = (report: typeof month): PeriodSummary => ({
-    total: report.total,
-    previous: report.previous,
-  })
+    const summarize = (report: typeof month): PeriodSummary => ({
+        total: report.total,
+        previous: report.previous,
+    });
 
-  return {
-    month: summarize(month),
-    week: summarize(week),
-    budgets,
-    recentExpenses: recent.items.map(({ id, amountMinor, currency, categoryId, occurredAt, note }) => ({
-      id,
-      amountMinor,
-      currency,
-      categoryId,
-      occurredAt,
-      note,
-    })),
-  }
+    return {
+        month: summarize(month),
+        week: summarize(week),
+        budgets,
+        recentExpenses: recent.items.map(
+            ({ id, amountMinor, currency, categoryId, occurredAt, note }) => ({
+                id,
+                amountMinor,
+                currency,
+                categoryId,
+                occurredAt,
+                note,
+            }),
+        ),
+    };
 }

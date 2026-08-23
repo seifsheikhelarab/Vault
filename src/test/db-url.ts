@@ -7,4 +7,4 @@
  *     bunx vitest run
  */
 export const TEST_DB_URL =
-  process.env.TEST_DATABASE_URL ?? 'postgresql://postgres:admin@localhost:5432/vault_test'
+    process.env.TEST_DATABASE_URL ?? 'postgresql://postgres:admin@localhost:5432/vault_test';

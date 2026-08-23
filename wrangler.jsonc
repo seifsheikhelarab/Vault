@@ -1,17 +1,17 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "vault",
-  "main": "src/index.ts",
-  "compatibility_date": "2026-08-22",
-  "compatibility_flags": ["nodejs_compat"],
-  "hyperdrive": [
-    {
-      "binding": "HYPERDRIVE",
-      "id": "placeholder-create-with-wrangler-hyperdrive-create",
-      "localConnectionString": "postgresql://postgres:admin@localhost:5432/vault"
-    }
-  ],
-  "triggers": {
-    "crons": ["0 3 * * *"]
-  }
+    "$schema": "node_modules/wrangler/config-schema.json",
+    "name": "vault",
+    "main": "src/index.ts",
+    "compatibility_date": "2026-08-22",
+    "compatibility_flags": ["nodejs_compat"],
+    "hyperdrive": [
+        {
+            "binding": "HYPERDRIVE",
+            "id": "placeholder-create-with-wrangler-hyperdrive-create",
+            "localConnectionString": "postgresql://postgres:admin@localhost:5432/vault",
+        },
+    ],
+    "triggers": {
+        "crons": ["0 3 * * *"],
+    },
 }

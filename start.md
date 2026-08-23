@@ -29,14 +29,14 @@ latest versions of all packages
 
 ```md
 src/
-├── api/               # ~20 route modules under /api/*
-│   ├── All resources separated into folders each folder containing files for router, controller,service,test, and input validation
-│   └── index.ts       # Aggregates all routers
-├── config/            # env, prisma, ratelimit, auth
-├── utils/          
-├── test/              # Test helpers
-└── index.ts           # Entry: imports dotenv, calls startServer()
-prisma/schema.prisma  
+├── api/ # ~20 route modules under /api/*
+│ ├── All resources separated into folders each folder containing files for router, controller,service,test, and input validation
+│ └── index.ts # Aggregates all routers
+├── config/ # env, prisma, ratelimit, auth
+├── utils/  
+├── test/ # Test helpers
+└── index.ts # Entry: imports dotenv, calls startServer()
+prisma/schema.prisma
 ```
 
 ## General Instructions
