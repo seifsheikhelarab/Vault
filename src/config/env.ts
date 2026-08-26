@@ -1,5 +1,6 @@
 import type { PrismaClient } from '../generated/prisma/client';
 import type { ParseExpense } from '../api/chat/service';
+import type { RateLimiter } from './rate-limit';
 
 /**
  * Full runtime env the app expects at request time. Secrets are not declared
@@ -11,6 +12,13 @@ export type AppBindings = CloudflareBindings & {
     BETTER_AUTH_SECRET: string;
     BETTER_AUTH_URL?: string;
     GEMINI_API_KEY?: string;
+    /**
+     * Edge ratelimit bindings (wrangler.jsonc `ratelimits`). Optional so the
+     * test suite and bare local dev fall back to in-memory buckets; see
+     * config/rate-limit.ts.
+     */
+    RATE_LIMIT_STRICT?: RateLimiter;
+    RATE_LIMIT_GENERAL?: RateLimiter;
     /**
      * Ticket #12 injection seam: overrides the production Gemini parser.
      * Tests stub this through binding overrides; production never sets it,

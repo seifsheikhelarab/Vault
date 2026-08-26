@@ -3,15 +3,36 @@
     "name": "vault",
     "main": "src/index.ts",
     "compatibility_date": "2026-08-22",
+    "vars": {
+        "BETTER_AUTH_URL": "https://vault.seifusama.workers.dev",
+    },
     "compatibility_flags": ["nodejs_compat"],
     "hyperdrive": [
         {
             "binding": "HYPERDRIVE",
-            "id": "placeholder-create-with-wrangler-hyperdrive-create",
+            "id": "500cc072699144459975e47227ec774d",
             "localConnectionString": "postgresql://postgres:admin@localhost:5432/vault",
         },
     ],
     "triggers": {
         "crons": ["0 3 * * *"],
+    },
+    "ratelimits": [
+        {
+            "name": "RATE_LIMIT_STRICT",
+            "namespace_id": "1001",
+            "simple": { "limit": 10, "period": 60 },
+        },
+        {
+            "name": "RATE_LIMIT_GENERAL",
+            "namespace_id": "1002",
+            "simple": { "limit": 120, "period": 60 },
+        },
+    ],
+    "observability": {
+        "logs": {
+            "enabled": true,
+            "invocation_logs": true,
+        },
     },
 }

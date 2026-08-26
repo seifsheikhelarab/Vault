@@ -23,7 +23,22 @@ export function resolveDatabaseUrl(env: {
 export function createPrisma(databaseUrl: string): PrismaClient {
     let client = clients.get(databaseUrl);
     if (!client) {
-        const adapter = new PrismaPg({ connectionString: databaseUrl });
+        // Workers caps ~6 concurrent outbound TCP streams per isolate; pg's
+        // default max=10 can deadlock (new connections queued behind held
+        // ones). Stale idle sockets handed out after an isolate freeze hang
+        // silently until the runtime kills the request ("code had hung") —
+        // no app-level log is possible there, so every knob below exists to
+        // turn that silent hang into a thrown, logged error instead.
+        const adapter = new PrismaPg({
+            connectionString: databaseUrl,
+            max: 5,
+            maxUses: 1,
+            connectionTimeoutMillis: 10_000,
+            idleTimeoutMillis: 30_000,
+            statement_timeout: 10_000,
+            query_timeout: 15_000,
+            keepAlive: true,
+        });
         client = new PrismaClient({ adapter });
         clients.set(databaseUrl, client);
     }

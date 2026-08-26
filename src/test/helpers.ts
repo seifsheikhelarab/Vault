@@ -50,6 +50,10 @@ export function buildApp(overrides: Partial<Omit<TestBindings, 'HYPERDRIVE'>> = 
         // connectionString and falls back to DATABASE_URL (tests connect direct,
         // spec #1: Prisma connects directly, no Hyperdrive).
         HYPERDRIVE: {} as CloudflareBindings['HYPERDRIVE'],
+        // Rate limit bindings left unset: middleware reads c.env?.RATE_LIMIT_*
+        // and falls back to the in-memory limiter (the path these tests assert).
+        RATE_LIMIT_STRICT: undefined as unknown as CloudflareBindings['RATE_LIMIT_STRICT'],
+        RATE_LIMIT_GENERAL: undefined as unknown as CloudflareBindings['RATE_LIMIT_GENERAL'],
         ...overrides,
     };
     const db = createPrisma(bindings.DATABASE_URL);

@@ -248,7 +248,7 @@ Max 500 items per array; both arrays optional. Semantics:
 1. Local DB (Drift/Isar/sqlite). All writes go local first; queue mutations.
 2. Every expense gets client-minted UUID at creation → safe retries.
 3. Background sync worker: flush queue via `push`, then drain `pull` pages updating cursor.
-4. On 401 during sync: drop cookie, route to login, resume after re-auth.
+4. On 401 during sync: the ApiClient handles it automatically — any protected (non-`/api/auth/*`) route answering `401` clears the stored token and fires `ApiClient.onUnauthorized`; `SessionController` listens and flips the session state to signed-out, so the router redirects to login. Resume after re-auth.
 
 ## 12. Gaps the frontend must design around
 

@@ -5,6 +5,8 @@
         "dev": "wrangler dev",
         "deploy": "wrangler deploy --minify",
         "cf-typegen": "wrangler types --env-interface CloudflareBindings",
+        "generate": "prisma generate",
+        "seed": "bunx tsx scripts/seed.ts",
         "lint": "oxlint",
         "format": "oxfmt --write .",
         "format:check": "oxfmt --check ."

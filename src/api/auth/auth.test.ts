@@ -165,3 +165,50 @@ describe('requireAuth guard', () => {
         expect(await res.json()).toEqual({ ok: true });
     });
 });
+
+describe('bearer token flow (native clients)', () => {
+    async function signInToken(email: string, password: string): Promise<string | null> {
+        const res = await t.request('/api/auth/sign-in/email', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ email, password }),
+        });
+        expect(res.status).toBe(200);
+        return res.headers.get('set-auth-token');
+    }
+
+    it('sign-in emits set-auth-token and get-session accepts the bearer form', async () => {
+        const { user, password } = await registerUser(t);
+        const token = await signInToken(user.email, password);
+        expect(token).toBeTruthy();
+
+        const authed = await t.request('/api/auth/get-session', {
+            headers: { authorization: `Bearer ${token}` },
+        });
+        expect(authed.status).toBe(200);
+        const session = (await authed.json()) as { user: { id: string } };
+        expect(session.user.id).toBe(user.id);
+    });
+
+    it('requireAuth routes accept the bearer header', async () => {
+        const { user, password } = await registerUser(t);
+        const token = await signInToken(user.email, password);
+
+        // Real route through the full app stack; signup seeds default
+        // categories so an authenticated list is non-empty.
+        const res = await t.request('/api/categories', {
+            headers: { authorization: `Bearer ${token}` },
+        });
+        expect(res.status).toBe(200);
+        const rows = (await res.json()) as unknown[];
+        expect(rows.length).toBeGreaterThan(0);
+    });
+
+    it('yields no session for a bogus bearer token', async () => {
+        const res = await t.request('/api/auth/get-session', {
+            headers: { authorization: 'Bearer not-a-real-token' },
+        });
+        expect(res.status).toBe(200);
+        expect(await res.json()).toBeNull();
+    });
+});
